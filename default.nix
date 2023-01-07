@@ -1,11 +1,12 @@
 { pkgs
 , lib ? pkgs.lib
 , toolchain
+, toolchain-msvs
 , fixedsFile ? ./fixeds.json
 , fixeds ? lib.importJSON fixedsFile
-}:
+}: let
 
-rec {
+toolchain-windows = rec {
   qemu = pkgs.qemu_kvm;
   libguestfs = pkgs.libguestfs-with-appliance.override {
     inherit qemu; # no need to use full qemu
@@ -329,10 +330,15 @@ rec {
     '';
   };
 
+  msvc = import ./msvc.nix {
+    inherit pkgs toolchain-windows toolchain-msvs;
+  };
+
   touch = {
     initialDisk = initialDisk {};
     inherit makemsix;
 
     autoUpdateScript = toolchain.autoUpdateFixedsScript fixedsFile;
   };
-}
+};
+in toolchain-windows
