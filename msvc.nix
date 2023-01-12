@@ -1,4 +1,5 @@
 { pkgs
+, lib ? pkgs.lib
 , toolchain-windows
 , toolchain-msvs
 }:
@@ -94,6 +95,18 @@ rec {
 
   defaultBuildConfig = buildConfig;
 
+  finalizePkg = { buildInputs }: ''
+    mkdir -p $out/{bin,nix-support}
+    echo 'if [[ "''${CMAKE_PREFIX_PATH:-}" != *'$out'* ]]; then export CMAKE_PREFIX_PATH=''${CMAKE_PREFIX_PATH:+''${CMAKE_PREFIX_PATH};}'$out'; fi' > $out/nix-support/setup-hook
+    ${lib.concatStrings (map (dep: ''
+      if [ -f ${dep}/nix-support/setup-hook ]
+      then
+        echo '. ${dep}/nix-support/setup-hook' >> $out/nix-support/setup-hook
+      fi
+      find -L ${dep} -iname '*.dll' -type f -exec ln -sf '{}' $out/bin/ \;
+    '') buildInputs)}
+  '';
+
   mkCmakePkg =
     { pname ? null
     , version ? null
@@ -127,8 +140,9 @@ rec {
     '';
     installPhase = ''
       wine64 cmake --install ${buildDir} --config ${buildConfig}
-      mkdir -p $out/nix-support
-      echo 'export CMAKE_PREFIX_PATH=''${CMAKE_PREFIX_PATH:+''${CMAKE_PREFIX_PATH};}'$out > $out/nix-support/setup-hook
+      ${finalizePkg {
+        inherit buildInputs;
+      }}
     '';
   };
 }
