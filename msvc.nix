@@ -95,7 +95,9 @@ rec {
   defaultBuildConfig = buildConfig;
 
   mkCmakePkg =
-    { name
+    { pname ? null
+    , version ? null
+    , name ? "${pname}-${version}"
     , src
     , buildInputs ? []
     , cmakeFlags ? ""
@@ -105,12 +107,11 @@ rec {
     , postPatch ? null
     , doCheck ? true
     }: pkgs.stdenvNoCC.mkDerivation {
-    inherit name src buildInputs postPatch doCheck;
+    inherit pname version name src buildInputs postPatch doCheck;
     nativeBuildInputs = [
       buildEnv
     ];
     configurePhase = ''
-      echo CMAKE_PREFIX_PATH=''${CMAKE_PREFIX_PATH:-nothing}
       wine64 cmake -S ${sourceDir} -B ${buildDir} \
         -DCMAKE_BUILD_TYPE=${buildConfig} \
         -DCMAKE_INSTALL_PREFIX=$(winepath -w $out) \
