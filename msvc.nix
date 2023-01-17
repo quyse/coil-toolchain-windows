@@ -98,6 +98,7 @@ rec {
   finalizePkg = { buildInputs }: ''
     mkdir -p $out/{bin,nix-support}
     echo 'if [[ "''${CMAKE_PREFIX_PATH:-}" != *'$out'* ]]; then export CMAKE_PREFIX_PATH=''${CMAKE_PREFIX_PATH:+''${CMAKE_PREFIX_PATH};}'$out'; fi' > $out/nix-support/setup-hook
+    echo 'if [[ "''${WINEPATH:-}" != *'$out/bin'* ]]; then export WINEPATH=''${WINEPATH:+''${WINEPATH};}'$out/bin'; fi' >> $out/nix-support/setup-hook
     ${lib.concatStrings (map (dep: ''
       if [ -f ${dep}/nix-support/setup-hook ]
       then
