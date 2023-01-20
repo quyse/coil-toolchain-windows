@@ -291,7 +291,7 @@ toolchain-windows = rec {
   initWinePrefix = ''
     mkdir .wineprefix
     export WINEPREFIX="$(readlink -f .wineprefix)" WINEDEBUG=-all
-    winecfg
+    wineboot
   '';
 
   # convert list of unix-style paths to windows-style PATH var
