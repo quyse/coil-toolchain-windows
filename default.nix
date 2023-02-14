@@ -87,7 +87,7 @@ toolchain-windows = rec {
     });
   in (if run then pkgs.runCommand name env else pkgs.writeScript "${name}.sh") script;
 
-  initialDisk = { version ? "2019" }: runPackerStep {
+  initialDisk = { version ? "2022" }: runPackerStep {
     name = "windows-${version}";
     iso = windowsInstallIso {
       inherit version;
