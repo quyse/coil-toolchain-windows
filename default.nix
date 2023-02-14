@@ -172,8 +172,10 @@ toolchain-windows = rec {
   windowsInstallIso = { version }: {
     iso = pkgs.fetchurl {
       inherit (fixeds.fetchurl."${{
-        "2019" = "https://software-download.microsoft.com/download/pr/17763.737.190906-2324.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us_1.iso";
-        "2022" = "https://software-download.microsoft.com/download/sg/20348.169.210806-2348.fe_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso";
+        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2019
+        "2019" = "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US";
+        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2022
+        "2022" = "https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x409&culture=en-us&country=US";
       }."${version}"}") url sha256 name;
       meta = {
         license = lib.licenses.unfree;
