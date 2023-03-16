@@ -114,7 +114,7 @@ rec {
     , name ? "${pname}-${version}"
     , src
     , buildInputs ? []
-    , cmakeFlags ? ""
+    , cmakeFlags ? []
     , sourceDir ? "."
     , buildDir ? "build"
     , buildConfig ? defaultBuildConfig
@@ -137,7 +137,7 @@ rec {
         -DCMAKE_INSTALL_PREFIX=$(winepath -w $out) \
         -DCMAKE_INSTALL_INCLUDEDIR=$(winepath -w $out/include) \
         -DBUILD_TESTING=${if doCheck then "ON" else "OFF"} \
-        ${cmakeFlags}
+        ${lib.escapeShellArgs cmakeFlags}
     '';
     buildPhase = ''
       wine64 cmake --build ${buildDir} --config ${buildConfig} -j ''$NIX_BUILD_CORES
