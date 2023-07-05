@@ -113,6 +113,7 @@ rec {
     , version ? null
     , name ? "${pname}-${version}"
     , src
+    , sourceRoot ? null
     , buildInputs ? []
     , cmakeFlags ? []
     , sourceDir ? "."
@@ -121,7 +122,7 @@ rec {
     , postPatch ? null
     , doCheck ? true
     }: pkgs.stdenvNoCC.mkDerivation {
-    inherit pname version name src buildInputs postPatch doCheck;
+    inherit pname version name src sourceRoot buildInputs postPatch doCheck;
     nativeBuildInputs = [
       buildEnv
     ];
