@@ -89,6 +89,9 @@ rec {
         export CXX=clang-cl
         export CFLAGS=-m64
         export CXXFLAGS=-m64
+
+        # workaround for https://bugs.winehq.org/show_bug.cgi?id=21259
+        wine64 start mspdbsrv.exe -start -spawn -shutdowntime -1
       ''} $out/nix-support/setup-hook
     '';
   };
@@ -127,12 +130,6 @@ rec {
       buildEnv
     ];
     configurePhase = ''
-      # HORRIBLE HACK
-      # cmake hangs under wine sometimes
-      # just kill it if it's too long and hope nobody cares
-      # (apparently nobody does if it's at link step - linking is done already)
-      (sleep 180; for i in $(${pkgs.procps}/bin/ps -o pid,cmd -u $UID -C cmake.exe | grep -F -- '-E vs_link_dll' | awk '{print $1;}'); do kill $i; done) &
-
       wine64 cmake -S ${sourceDir} -B ${buildDir} \
         -DCMAKE_BUILD_TYPE=${buildConfig} \
         -DCMAKE_INSTALL_PREFIX=$(winepath -w $out) \
