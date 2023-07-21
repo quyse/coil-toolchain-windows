@@ -124,8 +124,9 @@ rec {
     , buildConfig ? defaultBuildConfig
     , postPatch ? null
     , doCheck ? true
+    , meta ? null
     }: pkgs.stdenvNoCC.mkDerivation {
-    inherit pname version name src sourceRoot buildInputs postPatch doCheck;
+    inherit pname version name src sourceRoot buildInputs postPatch doCheck meta;
     nativeBuildInputs = [
       buildEnv
     ];
