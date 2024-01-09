@@ -11,6 +11,8 @@ toolchain-windows = rec {
   libguestfs = pkgs.libguestfs-with-appliance.override {
     inherit qemu; # no need to use full qemu
   };
+  # pre-BSL version of packer
+  packer = pkgs.callPackage ./packer.nix {};
 
   runPackerStep =
     { name ? "packer-disk"
@@ -56,7 +58,7 @@ toolchain-windows = rec {
         ''
       )}
       echo 'Starting VM...'
-      PATH=${qemu}/bin:$PATH CHECKPOINT_DISABLE=1 ${pkgs.buildPackages.packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
+      PATH=${qemu}/bin:$PATH CHECKPOINT_DISABLE=1 ${packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
         name = "${name}.template.json";
         inherit disk iso provisioners headless;
         extraDisk = if extraMount != null then "extraMount.img" else null;
