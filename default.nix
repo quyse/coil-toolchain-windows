@@ -315,7 +315,7 @@ toolchain-windows = rec {
     nativeBuildInputs = [
       pkgs.cmake
       pkgs.ninja
-      pkgs.clang_14
+      pkgs.clang
     ];
     cmakeFlags = [
       "-DCMAKE_CXX_COMPILER=clang++"
