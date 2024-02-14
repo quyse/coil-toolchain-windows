@@ -91,7 +91,7 @@ rec {
         export CXXFLAGS=-m64
 
         # workaround for https://bugs.winehq.org/show_bug.cgi?id=21259
-        wine64 start mspdbsrv.exe -start -spawn -shutdowntime -1
+        wine start mspdbsrv.exe -start -spawn -shutdowntime -1
       ''} $out/nix-support/setup-hook
     '';
   };
@@ -131,7 +131,7 @@ rec {
       buildEnv
     ];
     configurePhase = ''
-      wine64 cmake -S ${sourceDir} -B ${buildDir} \
+      wine cmake -S ${sourceDir} -B ${buildDir} \
         -DCMAKE_BUILD_TYPE=${buildConfig} \
         -DCMAKE_INSTALL_PREFIX=$(winepath -w $out) \
         -DCMAKE_INSTALL_INCLUDEDIR=$(winepath -w $out/include) \
@@ -139,13 +139,13 @@ rec {
         ${lib.escapeShellArgs cmakeFlags}
     '';
     buildPhase = ''
-      wine64 cmake --build ${buildDir} --config ${buildConfig} -j ''$NIX_BUILD_CORES
+      wine cmake --build ${buildDir} --config ${buildConfig} -j ''$NIX_BUILD_CORES
     '';
     checkPhase = ''
-      wine64 ctest --test-dir ${buildDir}
+      wine ctest --test-dir ${buildDir}
     '';
     installPhase = ''
-      wine64 cmake --install ${buildDir} --config ${buildConfig}
+      wine cmake --install ${buildDir} --config ${buildConfig}
       ${finalizePkg {
         inherit buildInputs;
       }}
