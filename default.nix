@@ -297,13 +297,6 @@ toolchain-windows = rec {
     mkdir .wineprefix
     export WINEPREFIX="$(readlink -f .wineprefix)" WINEDEBUG=-all
     wineboot
-
-    # in wow64 wine should be used instead of wine64
-    # temporary add alias for wine64
-    mkdir .tempbin
-    echo 'exec wine "$@"' > .tempbin/wine64
-    chmod +x .tempbin/wine64
-    export PATH=$PATH:$PWD/.tempbin
   '';
 
   # convert list of unix-style paths to windows-style PATH var
