@@ -284,6 +284,7 @@ toolchain-windows = rec {
 
   wine = ((pkgs.winePackagesFor "wineWow64").minimal.override {
     wineRelease = "unstable";
+    x11Support = true;
     embedInstallers = true;
   }).overrideAttrs (attrs: {
     patches = attrs.patches ++ [
