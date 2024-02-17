@@ -29,15 +29,15 @@
       "url": "https://software-static.download.prss.microsoft.com/sg/download/888969d5-f34g-4e03-ac9d-1f9786c66749/SERVER_EVAL_x64FRE_en-us.iso"
     },
     "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2019/Autounattend.xml": {
-      "etag": "\"a3bb0871935f741436627be065cfe83934c4967a22fa06d391b1619d130cdfa8\"",
+      "etag": "\"ac8e393fb022d5f6b18782a079b1c902990a723a2b49edf0f335fde40bf53b87\"",
       "name": "Autounattend.xml",
-      "sha256": "17knvr5zsbk72na496g4wm6g91sfckjc1vshpy54ziqkksk086pp",
+      "sha256": "09x5qjwmgrhp0xxss59wk1whxag4a72dkrmf238gmcdxsw4qwvqb",
       "url": "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2019/Autounattend.xml"
     },
     "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2022/Autounattend.xml": {
-      "etag": "\"d1ab7ccc59502f5e9a745669ccc72ed92ed17a793b3e354af370636af4e14774\"",
+      "etag": "\"c382ebee1b0e8ec04158274e7a8d7862dd158ac5e1542e95931dd360c494e057\"",
       "name": "Autounattend.xml",
-      "sha256": "1rrwl4shgh8ng9s326ffqmwkcklizl59i86pav99bz7dq48cskax",
+      "sha256": "1xw7i1ngnbgc7jhcp12jp9inrv3z2n88n3jjr56djyv3iiabwm1k",
       "url": "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2022/Autounattend.xml"
     }
   }
