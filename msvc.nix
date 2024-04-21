@@ -117,19 +117,21 @@ rec {
     , name ? "${pname}-${version}"
     , src
     , sourceRoot ? null
+    , nativeBuildInputs ? []
     , buildInputs ? []
     , cmakeFlags ? []
     , sourceDir ? "."
     , buildDir ? "build"
     , buildConfig ? defaultBuildConfig
+    , patches ? []
     , postPatch ? null
     , doCheck ? true
     , meta ? null
     }: pkgs.stdenvNoCC.mkDerivation {
-    inherit pname version name src sourceRoot buildInputs postPatch doCheck meta;
+    inherit pname version name src sourceRoot buildInputs patches postPatch doCheck meta;
     nativeBuildInputs = [
       buildEnv
-    ];
+    ] ++ nativeBuildInputs;
     configurePhase = ''
       wine cmake -S ${sourceDir} -B ${buildDir} \
         -DCMAKE_BUILD_TYPE=${buildConfig} \
