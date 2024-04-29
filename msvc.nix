@@ -126,7 +126,7 @@ rec {
     , patches ? []
     , postPatch ? null
     , doCheck ? true
-    , meta ? null
+    , meta ? {}
     }: pkgs.stdenvNoCC.mkDerivation {
     inherit pname version name src sourceRoot buildInputs patches postPatch doCheck meta;
     nativeBuildInputs = [
