@@ -309,12 +309,6 @@ toolchain-windows = rec {
     src = pkgs.fetchgit {
       inherit (fixeds.fetchgit."https://github.com/microsoft/msix-packaging.git") url rev sha256;
     };
-    patches = [
-      (pkgs.fetchpatch {
-        url = "https://github.com/microsoft/msix-packaging/pull/604.patch";
-        hash = "sha256-b2jgPNgRQwFKrOncN5l3O3R336hqpsJ94IClww+pvaI=";
-      })
-    ];
     buildInputs = [
       pkgs.icu
       pkgs.zlib
