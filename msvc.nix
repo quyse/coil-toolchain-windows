@@ -126,9 +126,11 @@ rec {
     , patches ? []
     , postPatch ? null
     , doCheck ? true
+    , preInstall ? null
+    , postInstall ? null
     , meta ? {}
     }: pkgs.stdenvNoCC.mkDerivation {
-    inherit pname version name src sourceRoot buildInputs patches postPatch doCheck meta;
+    inherit pname version name src sourceRoot buildInputs patches postPatch doCheck preInstall postInstall meta;
     nativeBuildInputs = [
       buildEnv
     ] ++ nativeBuildInputs;
@@ -147,10 +149,12 @@ rec {
       wine ctest --test-dir ${buildDir}
     '';
     installPhase = ''
+      runHook preInstall
       wine cmake --install ${buildDir} --config ${buildConfig}
       ${finalizePkg {
         inherit buildInputs;
       }}
+      runHook postInstall
     '';
   };
 }
