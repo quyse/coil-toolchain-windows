@@ -8,11 +8,11 @@
   },
   "fetchurl": {
     "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso": {
-      "etag": "\"25673000-605b064eb2ff2\"",
-      "last-modified": "Tue, 19 Sep 2023 06:30:25 GMT",
-      "name": "virtio-win-0.1.240.iso",
-      "sha256": "1imwpimwh3cid6nq187z43h877fim4l6q9zd4vh7hzwgcrc85m7b",
-      "url": "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.240-1/virtio-win-0.1.240.iso"
+      "etag": "\"2b38b000-61efb488b3143\"",
+      "last-modified": "Tue, 06 Aug 2024 03:21:02 GMT",
+      "name": "virtio-win-0.1.262.iso",
+      "sha256": "0gkaxqd3zhb09k9140y4la9s3vzra3x9mz24mbha3ram3s7naryl",
+      "url": "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.262-1/virtio-win-0.1.262.iso"
     },
     "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US": {
       "etag": "\"0xAC6B7EFD6E7E1947FA51E1D23676E38B1C3CBCE3D9F5F0EFDCAF044F92A359DA\"",
