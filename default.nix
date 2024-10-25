@@ -8,9 +8,7 @@
 
 toolchain-windows = rec {
   qemu = pkgs.qemu_kvm;
-  libguestfs = pkgs.libguestfs-with-appliance.override {
-    inherit qemu; # no need to use full qemu
-  };
+  libguestfs = pkgs.libguestfs-with-appliance;
   # pre-BSL version of packer
   packer = pkgs.callPackage ./packer.nix {};
 
