@@ -121,8 +121,8 @@ toolchain-windows = rec {
           shutdown_command = ''shutdown /s /t 10 /f /d p:4:1 /c "Packer Shutdown"'';
           shutdown_timeout = "15m";
           qemuargs = [
-            # https://blog.wikichoon.com/2014/07/enabling-hyper-v-enlightenments-with-kvm.html
-            [ "-cpu" "qemu64,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time" ]
+            # https://www.qemu.org/docs/master/system/i386/hyperv.html
+            [ "-cpu" "host,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,hv_vpindex,hv_runtime,hv_time,hv_synic,hv_stimer,hv_tlbflush,hv_ipi,hv_frequencies" ]
             # file-backed memory
             [ "-machine" "type=pc,accel=kvm,memory-backend=pc.ram" ]
             [ "-object" "memory-backend-file,id=pc.ram,size=${toString memory}M,mem-path=pc.ram,prealloc=off,share=on,discard-data=on" ]
@@ -173,7 +173,7 @@ toolchain-windows = rec {
       };
     });
 
-  initialDisk = { version ? "2022" }: runPackerStep {
+  initialDisk = { version ? "2025" }: runPackerStep {
     name = "windows-${version}";
     iso = windowsInstallIso {
       inherit version;
@@ -248,15 +248,15 @@ toolchain-windows = rec {
         "2019" = "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US";
         # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2022
         "2022" = "https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x409&culture=en-us&country=US";
+        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2025
+        "2025" = "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us";
       }."${version}"}") url sha256 name;
       meta = {
         license = lib.licenses.unfree;
       };
     };
     checksum = "none";
-    autounattend = pkgs.fetchurl {
-      inherit (fixeds.fetchurl."https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/${version}/Autounattend.xml") url sha256 name;
-    };
+    autounattend = ./autounattend + "/${version}.xml";
   };
 
   # generate .reg file given a list of actions

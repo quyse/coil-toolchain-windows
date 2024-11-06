@@ -14,6 +14,13 @@
       "sha256": "0ab4cn0zsp4j289gldqv1b5jcja9mbwgwf6lzap0qjbav1m1drmv",
       "url": "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.271-1/virtio-win-0.1.271.iso"
     },
+    "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us": {
+      "etag": "\"0x3F259E31901CA79C84D1A2FB6ADCE4D14A065FF1BC1B8838C60A7D1A9DBAC90E\"",
+      "last-modified": "Thu, 19 Sep 2024 17:43:12 GMT",
+      "name": "26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso",
+      "sha256": "0gdjg62sq807jn79j15z278dx99q1l1b7c8m7k2wdqshwc14bvyh",
+      "url": "https://software-static.download.prss.microsoft.com/dbazure/888969d5-f34g-4e03-ac9d-1f9786c66749/26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
+    },
     "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US": {
       "etag": "\"0xAC6B7EFD6E7E1947FA51E1D23676E38B1C3CBCE3D9F5F0EFDCAF044F92A359DA\"",
       "last-modified": "Fri, 11 Nov 2022 13:01:01 GMT",
@@ -27,18 +34,6 @@
       "name": "SERVER_EVAL_x64FRE_en-us.iso",
       "sha256": "09ak4lsia9ghd4b8fi4knyl13pq2qjf0g9lwzib4hmbva3cackry",
       "url": "https://software-static.download.prss.microsoft.com/sg/download/888969d5-f34g-4e03-ac9d-1f9786c66749/SERVER_EVAL_x64FRE_en-us.iso"
-    },
-    "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2019/Autounattend.xml": {
-      "etag": "W/\"b1fced1062a1fa12e068b2f7c80b25ec37819bc5efc62a6fd774a6fa9ccc3874\"",
-      "name": "Autounattend.xml",
-      "sha256": "09x5qjwmgrhp0xxss59wk1whxag4a72dkrmf238gmcdxsw4qwvqb",
-      "url": "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2019/Autounattend.xml"
-    },
-    "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2022/Autounattend.xml": {
-      "etag": "W/\"daaeffa04e7f1ea6b6734f62eb17c6dba24b7510b8b41029e516592a51fe7c68\"",
-      "name": "Autounattend.xml",
-      "sha256": "1xw7i1ngnbgc7jhcp12jp9inrv3z2n88n3jjr56djyv3iiabwm1k",
-      "url": "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2022/Autounattend.xml"
     },
     "https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt": {
       "etag": "0x8DCB81B30EF27B0",
