@@ -125,22 +125,26 @@ rec {
     , buildConfig ? defaultBuildConfig
     , patches ? []
     , postPatch ? null
+    , preConfigure ? null
+    , postConfigure ? null
     , doCheck ? true
     , preInstall ? null
     , postInstall ? null
     , meta ? {}
     }: pkgs.stdenvNoCC.mkDerivation {
-    inherit pname version name src sourceRoot buildInputs patches postPatch doCheck preInstall postInstall meta;
+    inherit pname version name src sourceRoot buildInputs patches postPatch preConfigure postConfigure doCheck preInstall postInstall meta;
     nativeBuildInputs = [
       buildEnv
     ] ++ nativeBuildInputs;
     configurePhase = ''
+      runHook preConfigure
       wine cmake -S ${sourceDir} -B ${buildDir} \
         -DCMAKE_BUILD_TYPE=${buildConfig} \
         -DCMAKE_INSTALL_PREFIX=$(winepath -w $out) \
         -DCMAKE_INSTALL_INCLUDEDIR=$(winepath -w $out/include) \
         -DBUILD_TESTING=${if doCheck then "ON" else "OFF"} \
         ${lib.escapeShellArgs cmakeFlags}
+      runHook postConfigure
     '';
     buildPhase = ''
       wine cmake --build ${buildDir} --config ${buildConfig} -j ''$NIX_BUILD_CORES
