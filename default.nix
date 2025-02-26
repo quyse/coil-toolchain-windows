@@ -315,6 +315,10 @@ toolchain-windows = rec {
       pkgs.ninja
       pkgs.clang
     ];
+    preConfigure = ''
+      # icu headers require at least C++ 17 since v75
+      find . -name CMakeLists.txt -exec sed -iE 's/CMAKE_CXX_STANDARD 14/CMAKE_CXX_STANDARD 17/' {} \;
+    '';
     cmakeFlags = [
       "-DCMAKE_CXX_COMPILER=clang++"
       "-DCMAKE_C_COMPILER=clang"
