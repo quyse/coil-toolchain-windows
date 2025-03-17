@@ -22,9 +22,7 @@ rec {
       includeRecommended = true;
     }).disk;
     extraMount = "work";
-    beforeScript = ''
-      mkdir -p work/out
-    '';
+    extraMountIn = false;
     provisioners = [
       {
         type = "powershell";
@@ -37,8 +35,9 @@ rec {
                 set-content env:\"$name" "$value"
               }
             }
-            Copy-Item -Path "''${installationPath}" -Destination "D:\out\msvc" -Recurse
-            Copy-Item -Path "''${env:ProgramFiles(x86)}\Windows Kits" -Destination "D:\out\sdk" -Recurse
+            mkdir "D:\work\out"
+            Copy-Item -Path "''${installationPath}" -Destination "D:\work\out\msvc" -Recurse
+            Copy-Item -Path "''${env:ProgramFiles(x86)}\Windows Kits" -Destination "D:\work\out\sdk" -Recurse
           ''
         ];
       }

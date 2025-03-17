@@ -48,7 +48,8 @@ toolchain-windows = rec {
           echo 'Copying extra mount data in...'
           tar -C ${extraMountArg} -c --dereference . | ${guestfishCmd} : \
             mount /dev/disk/guestfs/extraMount1 / : \
-            tar-in - /
+            mkdir /${extraMountArg} : \
+            tar-in - /${extraMountArg}
           rm -r ${extraMountArg}
         '' else ''
           echo 'Creating extra mount...'
@@ -69,7 +70,7 @@ toolchain-windows = rec {
             add extraMount.img format:qcow2 label:extraMount readonly:true : \
             run : \
             mount-ro /dev/disk/guestfs/extraMount1 / : \
-            tar-out / - | tar -C ${extraMountArg} -xf -
+            tar-out /${extraMountArg} - | tar -C ${extraMountArg} -vxf -
         ''}
         echo 'Clearing extra mount...'
         rm extraMount.img
