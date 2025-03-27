@@ -1,8 +1,8 @@
 {
   "fetchgit": {
     "https://github.com/microsoft/msix-packaging.git": {
-      "rev": "9c9ad98393bee1919fb0ff3a83a1fd52b960ae14",
-      "sha256": "041l9mg5y4rqqgb5zx2znd7w6k56y5izn6r1vv9rfy970l8bhk44",
+      "rev": "efeb9dad695a200c2beaddcba54a52c8320bd135",
+      "sha256": "1qc0lapp4zmaf70n4z4di6j20i3l5fmynq3b987j93gad9jd08m7",
       "url": "https://github.com/microsoft/msix-packaging.git"
     }
   },
