@@ -51,7 +51,57 @@ rec {
 
   stdenv = pkgs.stdenvNoCC;
 
-  buildEnv = stdenv.mkDerivation {
+  # needed for llvm
+  python = pkgs.fetchzip {
+    url = "https://www.python.org/ftp/python/3.13.2/python-3.13.2-embed-amd64.zip";
+    stripRoot = false;
+    hash = "sha256-uLtrqKeabAY0tjxCbg+h0Mv+kr1hw9rirLlVKvjGqb0=";
+  };
+
+  llvmPackages = pkgs.llvmPackages_19;
+  llvm = mkCmakePkg {
+    inherit (llvmPackages.tools.libllvm) pname version meta;
+    buildEnv = bootstrapBuildEnv;
+    src = llvmPackages.tools.libllvm.passthru.monorepoSrc;
+    sourceDir = "llvm";
+    preConfigure = ''
+      export WINEPATH="$WINEPATH;${toolchain-windows.makeWinePaths [python]}"
+    '';
+    patches = [
+      # needed for clang-cl modules support
+      (pkgs.fetchpatch {
+        url = "https://github.com/llvm/llvm-project/pull/121046.patch";
+        hash = "sha256-ZSi3t8sEDfbw4hKIebYjZ17pnniPCMCltJ3/giWmNpI=";
+      })
+    ];
+    cmakeFlags = [
+      "-DLLVM_USE_LINKER=lld-link"
+      "-DLLVM_ENABLE_PROJECTS=clang"
+      "-DLLVM_INCLUDE_TESTS=OFF"
+    ];
+    doCheck = false;
+  };
+
+  cmake = mkCmakePkg rec {
+    inherit (pkgs.cmake) meta;
+    buildEnv = bootstrapBuildEnv;
+    pname = "cmake";
+    version = "3.31.6";
+    src = pkgs.fetchgit {
+      url = "https://gitlab.kitware.com/cmake/cmake.git";
+      rev = "v${version}";
+      hash = "sha256-+IzKmmpCrHL9XlNNoFj/mUB0YvNCVQN+GhTb4Ks4d8o=";
+    };
+    patches = [
+      (pkgs.fetchpatch {
+        url = "https://gitlab.kitware.com/cmake/cmake/-/merge_requests/9762.patch";
+        hash = "sha256-d2pUt/omiEy/5DXvKMugxuJi4k49QI5YaKvaYCxiG1o=";
+      })
+    ];
+    doCheck = false;
+  };
+
+  buildEnvFun = { llvmBin, cmakeBin }: stdenv.mkDerivation {
     name = "windowsBuildEnv";
 
     buildCommand = ''
@@ -59,13 +109,20 @@ rec {
       ln -s ${pkgs.writeScript "windowsBuildEnv-setupHook" ''
         export PATH=${toolchain-windows.wine}/bin:$PATH
         ${toolchain-windows.initWinePrefix}
-        export WINEPATH="${toolchain-windows.makeWinePaths [
+        export WINEPATH="${toolchain-windows.makeWinePaths ([
           "${components}/msvc/VC/Tools/MSVC/*/bin/Hostx64/x64"
+        ]
+        ++ lib.optional (llvmBin != null) (pkgs.runCommand "llvmBin" {} ''
+            mkdir $out
+            ln -s ${llvmBin}/clang-cl.exe $out/clang-cl.exe
+          '')
+        ++ lib.optional (cmakeBin != null) cmakeBin
+        ++ [
           "${components}/msvc/VC/Tools/Llvm/bin"
           "${components}/msvc/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin"
           "${components}/msvc/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja"
           ''"$(find ${components}/sdk/10/bin -iname '*.exe' -exec dirname {} \; | grep 'x64$' | sort -u)"''
-        ]};C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem"
+        ])};C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem"
         export INCLUDE="${toolchain-windows.makeWinePaths [
           "${components}/msvc/VC/Tools/MSVC/*/include"
           "${components}/sdk/10/Include/*/*"
@@ -95,6 +152,16 @@ rec {
     '';
   };
 
+  buildEnv = buildEnvFun {
+    llvmBin = "${llvm}/bin";
+    cmakeBin = "${cmake}/bin";
+  };
+
+  bootstrapBuildEnv = buildEnvFun {
+    llvmBin = null;
+    cmakeBin = null;
+  };
+
   defaultBuildConfig = buildConfig;
 
   finalizePkg = { buildInputs }: ''
@@ -110,7 +177,9 @@ rec {
     '') buildInputs)}
   '';
 
-  mkCmakePkg =
+  mkCmakePkg = let
+    defaultBuildEnv = buildEnv;
+  in lib.makeOverridable (
     { pname ? null
     , version ? null
     , name ? "${pname}-${version}"
@@ -130,6 +199,7 @@ rec {
     , preInstall ? null
     , postInstall ? null
     , meta ? {}
+    , buildEnv ? defaultBuildEnv
     }: pkgs.stdenvNoCC.mkDerivation {
     inherit pname version name src sourceRoot buildInputs patches postPatch preConfigure postConfigure doCheck preInstall postInstall meta;
     nativeBuildInputs = [
@@ -159,5 +229,5 @@ rec {
       }}
       runHook postInstall
     '';
-  };
+  });
 }
