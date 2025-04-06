@@ -120,7 +120,7 @@ rec {
     , buildInputs ? []
     , cmakeFlags ? []
     , sourceDir ? "."
-    , buildDir ? "build"
+    , buildDir ? "../build"
     , buildConfig ? defaultBuildConfig
     , patches ? []
     , postPatch ? null
