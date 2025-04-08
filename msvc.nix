@@ -62,6 +62,7 @@ rec {
   llvm = mkCmakePkg {
     inherit (llvmPackages.tools.libllvm) pname version meta;
     buildEnv = bootstrapBuildEnv;
+    reduceDeps = false;
     src = llvmPackages.tools.libllvm.passthru.monorepoSrc;
     sourceDir = "llvm";
     preConfigure = ''
@@ -85,6 +86,7 @@ rec {
   cmake = mkCmakePkg rec {
     inherit (pkgs.cmake) meta;
     buildEnv = bootstrapBuildEnv;
+    reduceDeps = false;
     pname = "cmake";
     version = "3.31.6";
     src = pkgs.fetchgit {
@@ -152,6 +154,13 @@ rec {
     '';
   };
 
+  pe-deps = mkCmakePkg {
+    buildEnv = bootstrapBuildEnv;
+    name = "pe-deps";
+    src = ./pe-deps;
+    reduceDeps = false;
+  };
+
   buildEnv = buildEnvFun {
     llvmBin = "${llvm}/bin";
     cmakeBin = "${cmake}/bin";
@@ -164,7 +173,7 @@ rec {
 
   defaultBuildConfig = buildConfig;
 
-  finalizePkg = { buildInputs }: ''
+  finalizePkg = { buildInputs, reduceDeps ? true }: ''
     mkdir -p $out/{bin,nix-support}
     echo 'if [[ "''${CMAKE_PREFIX_PATH:-}" != *'$out'* ]]; then export CMAKE_PREFIX_PATH=''${CMAKE_PREFIX_PATH:+''${CMAKE_PREFIX_PATH};}'$out'; fi' > $out/nix-support/setup-hook
     echo 'if [[ "''${WINEPATH:-}" != *'$out/bin'* ]]; then export WINEPATH=''${WINEPATH:+''${WINEPATH};}'$out/bin'; fi' >> $out/nix-support/setup-hook
@@ -173,8 +182,18 @@ rec {
       then
         echo '. ${dep}/nix-support/setup-hook' >> $out/nix-support/setup-hook
       fi
-      find -L ${dep} -iname '*.dll' -type f -exec ln -sf '{}' $out/bin/ \;
+      find -L ${dep} -iname '*.dll' -exec ln -sft $out/bin '{}' +
     '') buildInputs)}
+    ${lib.optionalString reduceDeps ''
+      mkdir -p $out/bin-reduced
+      find -L $out/bin -iname '*.exe' -exec ln -rst $out/bin-reduced '{}' +
+      pushd $out/bin
+      find -L $out/bin -iname '*.exe' -exec wine ${pe-deps}/bin/pe-deps.exe '{}' + \
+        | ${pkgs.dos2unix}/bin/dos2unix \
+        | sort -u \
+        | xargs -I % find -L $out/bin -iname % -exec ln -rst $out/bin-reduced '{}' +
+      popd
+    ''}
   '';
 
   mkCmakePkg = let
@@ -200,6 +219,7 @@ rec {
     , postInstall ? null
     , meta ? {}
     , buildEnv ? defaultBuildEnv
+    , reduceDeps ? true
     }: pkgs.stdenvNoCC.mkDerivation {
     inherit pname version name src sourceRoot buildInputs patches postPatch preConfigure postConfigure doCheck preInstall postInstall meta;
     nativeBuildInputs = [
@@ -225,7 +245,7 @@ rec {
       runHook preInstall
       wine cmake --install ${buildDir} --config ${buildConfig}
       ${finalizePkg {
-        inherit buildInputs;
+        inherit buildInputs reduceDeps;
       }}
       runHook postInstall
     '';
