@@ -61,7 +61,6 @@ rec {
   llvmPackages = pkgs.llvmPackages_19;
   llvm = mkCmakePkg {
     inherit (llvmPackages.tools.libllvm) pname version meta;
-    buildEnv = bootstrapBuildEnv;
     reduceDeps = false;
     src = llvmPackages.tools.libllvm.passthru.monorepoSrc;
     sourceDir = "llvm";
@@ -85,7 +84,6 @@ rec {
 
   cmake = mkCmakePkg rec {
     inherit (pkgs.cmake) meta;
-    buildEnv = bootstrapBuildEnv;
     reduceDeps = false;
     pname = "cmake";
     version = "3.31.6";
@@ -155,20 +153,19 @@ rec {
   };
 
   pe-deps = mkCmakePkg {
-    buildEnv = bootstrapBuildEnv;
     name = "pe-deps";
     src = ./pe-deps;
     reduceDeps = false;
   };
 
   buildEnv = buildEnvFun {
-    llvmBin = "${llvm}/bin";
-    cmakeBin = "${cmake}/bin";
-  };
-
-  bootstrapBuildEnv = buildEnvFun {
     llvmBin = null;
     cmakeBin = null;
+  };
+
+  buildEnvWithModulesSupport = buildEnvFun {
+    llvmBin = "${llvm}/bin";
+    cmakeBin = "${cmake}/bin";
   };
 
   defaultBuildConfig = buildConfig;
