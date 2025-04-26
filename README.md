@@ -19,7 +19,7 @@ nix build -L --impure --expr 'let
   coil = import ./default.nix {}; # import Coil project
   inherit (coil.toolchain-windows.msvc {}) mkCmakePkg;
 in mkCmakePkg {
-  inherit (pkgs.SDL2) pname version src meta; # just use source from nixpkgs
+  inherit (pkgs.SDL2_classic or pkgs.SDL2) pname version src meta; # just use source from nixpkgs
   cmakeFlags = [
     "-DBUILD_SHARED_LIBS=ON"
   ];
