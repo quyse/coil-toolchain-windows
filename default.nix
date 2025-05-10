@@ -1,7 +1,6 @@
 { pkgs
 , lib ? pkgs.lib
-, toolchain
-, toolchain-msvs
+, coil
 , fixedsFile ? ./fixeds.json
 , fixeds ? lib.importJSON fixedsFile
 }: let
@@ -338,14 +337,15 @@ toolchain-windows = rec {
   };
 
   msvc = import ./msvc.nix {
-    inherit pkgs toolchain-windows toolchain-msvs;
+    inherit pkgs;
+    inherit (coil) toolchain-windows toolchain-msvs;
   };
 
   touch = {
     initialDisk = initialDisk {};
     inherit makemsix;
 
-    autoUpdateScript = toolchain.autoUpdateFixedsScript fixedsFile;
+    autoUpdateScript = coil.toolchain.autoUpdateFixedsScript fixedsFile;
   };
 };
 in toolchain-windows
