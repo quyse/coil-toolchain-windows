@@ -6,7 +6,7 @@ Currently the MSVC integration uses `clang-cl` compiler instead of usual `cl`.
 
 ## Example usage
 
-The following example builds Windows version of [SDL2](https://www.libsdl.org/). WARNING: the initial build is very heavy: it will run multiple QEMU VMs and take many GiBs of space. Subsequent builds will reuse Nix cache and run much faster.
+The following example builds Windows version of [SDL3](https://www.libsdl.org/). WARNING: the initial build is very heavy: it will run multiple QEMU VMs and take many GiBs of space. Subsequent builds will reuse Nix cache and run much faster.
 
 It is easier to use the umbrella `default.nix` from the root Coil project instead of using this project directly. Clone the Coil project, and run the following (while being in the Coil project directory):
 
@@ -19,9 +19,9 @@ nix build -L --impure --expr 'let
   coil = import ./default.nix {}; # import Coil project
   inherit (coil.toolchain-windows.msvc {}) mkCmakePkg;
 in mkCmakePkg {
-  inherit (pkgs.SDL2_classic or pkgs.SDL2) pname version src meta; # just use source from nixpkgs
+  inherit (pkgs.sdl3) pname version src meta; # just use source from nixpkgs
   cmakeFlags = [
-    "-DBUILD_SHARED_LIBS=ON"
+    "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
   ];
 }'
 ```
