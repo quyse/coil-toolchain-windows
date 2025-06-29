@@ -66,6 +66,8 @@ toolchain-windows = rec {
         inherit memory disk iso provisioners headless;
         extraDisk = "extraMount.img";
       }}
+      echo 'Clearing RAM file...'
+      rm pc.ram
       ${lib.optionalString (extraMount != null && extraMountOut) ''
         echo 'Copying extra mount data out...'
         mkdir ${extraMountArg}
@@ -121,6 +123,9 @@ toolchain-windows = rec {
           qemuargs = [
             # https://blog.wikichoon.com/2014/07/enabling-hyper-v-enlightenments-with-kvm.html
             [ "-cpu" "qemu64,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time" ]
+            # file-backed memory
+            [ "-machine" "type=pc,accel=kvm,memory-backend=pc.ram" ]
+            [ "-object" "memory-backend-file,id=pc.ram,size=${toString memory}M,mem-path=pc.ram,prealloc=off,share=on,discard-data=on" ]
             # main hdd
             [ "-drive" "file=${output_directory}/packer-qemu,if=virtio,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,index=0" ]
           ] ++
