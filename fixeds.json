@@ -39,6 +39,13 @@
       "name": "Autounattend.xml",
       "sha256": "1xw7i1ngnbgc7jhcp12jp9inrv3z2n88n3jjr56djyv3iiabwm1k",
       "url": "https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/2022/Autounattend.xml"
+    },
+    "https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt": {
+      "etag": "0x8DCB81B30EF27B0",
+      "last-modified": "Fri, 09 Aug 2024 02:30:10 GMT",
+      "name": "Microsoft_Windows_Code_Signing_PCA_2024.crt",
+      "sha256": "1lmwkhhjxishkazgayx1p8v9g98332i54rw972vpfvbzjby9w8py",
+      "url": "https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt"
     }
   }
 }

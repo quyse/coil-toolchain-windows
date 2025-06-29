@@ -16,7 +16,7 @@ toolchain-windows = rec {
     , memory ? 4096
     , disk ? null # set to the previous step, null for initial step
     , iso ? null
-    , provisioners ? packerInitialProvisioners
+    , provisioners
     , extraMount ? null # path to mount (actually copy) into VM as drive D:
     , extraMountIn ? true # whether to copy data into VM
     , extraMountOut ? true # whether to copy data out of VM
@@ -45,19 +45,17 @@ toolchain-windows = rec {
       export HOME="$(mktemp -d)" # fix warning by guestfish
       echo 'Executing beforeScript...'
       ${beforeScript}
-      ${lib.optionalString (extraMount != null) (
-        if extraMountIn then ''
-          echo 'Copying extra mount data in...'
-          tar -C ${extraMountArg} -c --dereference . | ${guestfishCmd} : \
-            mount /dev/disk/guestfs/extraMount1 / : \
-            mkdir /${extraMountArg} : \
-            tar-in - /${extraMountArg}
-          rm -r ${extraMountArg}
-        '' else ''
-          echo 'Creating extra mount...'
-          ${guestfishCmd}
-        ''
-      )}
+      ${if extraMount != null && extraMountIn then ''
+        echo 'Copying extra mount data in...'
+        tar -C ${extraMountArg} -c --dereference . | ${guestfishCmd} : \
+          mount /dev/disk/guestfs/extraMount1 / : \
+          mkdir /${extraMountArg} : \
+          tar-in - /${extraMountArg}
+        rm -r ${extraMountArg}
+      '' else ''
+        echo 'Creating extra mount...'
+        ${guestfishCmd}
+      ''}
       ${lib.optionalString debug ''
         echo 'Starting socat proxying VNC as Unix socket...'
         ${pkgs.socat}/bin/socat unix-listen:vnc.socket,fork tcp-connect:127.0.0.1:5900 &
@@ -66,21 +64,19 @@ toolchain-windows = rec {
       PATH=${qemu}/bin:$PATH CHECKPOINT_DISABLE=1 ${packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
         name = "${name}.template.json";
         inherit memory disk iso provisioners headless;
-        extraDisk = if extraMount != null then "extraMount.img" else null;
+        extraDisk = "extraMount.img";
       }}
-      ${lib.optionalString (extraMount != null) ''
-        ${lib.optionalString extraMountOut ''
-          echo 'Copying extra mount data out...'
-          mkdir ${extraMountArg}
-          ${libguestfs}/bin/guestfish \
-            add extraMount.img format:qcow2 label:extraMount readonly:true : \
-            run : \
-            mount-ro /dev/disk/guestfs/extraMount1 / : \
-            tar-out /${extraMountArg} - | tar -C ${extraMountArg} -vxf -
-        ''}
-        echo 'Clearing extra mount...'
-        rm extraMount.img
+      ${lib.optionalString (extraMount != null && extraMountOut) ''
+        echo 'Copying extra mount data out...'
+        mkdir ${extraMountArg}
+        ${libguestfs}/bin/guestfish \
+          add extraMount.img format:qcow2 label:extraMount readonly:true : \
+          run : \
+          mount-ro /dev/disk/guestfs/extraMount1 / : \
+          tar-out /${extraMountArg} - | tar -C ${extraMountArg} -vxf -
       ''}
+      echo 'Clearing extra mount...'
+      rm extraMount.img
       echo 'Executing afterScript...'
       ${afterScript}
     '';
@@ -96,16 +92,6 @@ toolchain-windows = rec {
       __impure = true;
     });
   in (if run then pkgs.runCommand name env else pkgs.writeScript "${name}.sh") script;
-
-  initialDisk = { version ? "2022" }: runPackerStep {
-    name = "windows-${version}";
-    iso = windowsInstallIso {
-      inherit version;
-    };
-    meta = {
-      license = lib.licenses.unfree;
-    };
-  };
 
   packerTemplateJson =
     { name
@@ -182,6 +168,74 @@ toolchain-windows = rec {
       };
     });
 
+  initialDisk = { version ? "2022" }: runPackerStep {
+    name = "windows-${version}";
+    iso = windowsInstallIso {
+      inherit version;
+    };
+    extraMount = "work";
+    extraMountOut = false;
+    beforeScript = ''
+      mkdir work
+      ln -s ${writeRegistryFile {
+        name = "initial.reg";
+        keys = {
+          # disable uac
+          # https://docs.microsoft.com/en-us/windows/security/identity-protection/user-account-control/user-account-control-group-policy-and-registry-key-settings
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" = {
+            EnableLUA = false;
+            PromptOnSecureDesktop = false;
+            ConsentPromptBehaviorAdmin = 0;
+            EnableVirtualization = false;
+            EnableInstallerDetection = false;
+          };
+          # disable restore
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore" = {
+            DisableSR = true;
+          };
+          # disable windows update
+          # https://docs.microsoft.com/en-us/windows/deployment/update/waas-wu-settings
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU" = {
+            NoAutoUpdate = true;
+            AUOptions = 1;
+          };
+          # disable screensaver
+          "HKEY_CURRENT_USER\\Control Panel\\Desktop" = {
+            ScreenSaveActive = false;
+          };
+        };
+      }} work/initial.reg
+      ln -s ${pkgs.fetchurl {
+        inherit (fixeds.fetchurl."https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt") url sha256 name;
+      }} work/microsoft.crt
+    '';
+    provisioners = [
+      {
+        type = "powershell";
+        inline = [
+          # apply registry tweaks
+          ''reg import F:\work\initial.reg''
+          # uninstall defender
+          "Uninstall-WindowsFeature -Name Windows-Defender -Remove"
+          # power options
+          "powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+          "powercfg /hibernate off"
+          "powercfg /change -monitor-timeout-ac 0"
+          "powercfg /change -monitor-timeout-dc 0"
+          # install recent Microsoft root code signing certificate required for some software
+          # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
+          ''Import-Certificate -FilePath F:\work\microsoft.crt -CertStoreLocation Cert:\LocalMachine\Root''
+        ];
+      }
+      {
+        type = "windows-restart";
+      }
+    ];
+    meta = {
+      license = lib.licenses.unfree;
+    };
+  };
+
   windowsInstallIso = { version }: {
     iso = pkgs.fetchurl {
       inherit (fixeds.fetchurl."${{
@@ -199,24 +253,6 @@ toolchain-windows = rec {
       inherit (fixeds.fetchurl."https://raw.githubusercontent.com/chef/bento/main/packer_templates/win_answer_files/${version}/Autounattend.xml") url sha256 name;
     };
   };
-
-  packerInitialProvisioners =
-    registryProvisioners initialRegistryFile ++
-    [
-      {
-        type = "powershell";
-        inline = [
-          # uninstall defender
-          "Uninstall-WindowsFeature -Name Windows-Defender -Remove"
-          # power options
-          "powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
-          "powercfg /hibernate off"
-          "powercfg /change -monitor-timeout-ac 0"
-          "powercfg /change -monitor-timeout-dc 0"
-        ];
-      }
-    ] ++
-    [ { type = "windows-restart"; } ];
 
   # generate .reg file given a list of actions
   writeRegistryFile =
@@ -242,49 +278,6 @@ toolchain-windows = rec {
     Windows Registry Editor Version 5.00
     ${lib.concatStrings (lib.mapAttrsToList keyAction keys)}
   '';
-
-  registryProvisioners = registryFile: let
-    destPath = ''C:\Windows\Temp\${baseNameOf registryFile}'';
-  in [
-    {
-      type = "file";
-      source = registryFile;
-      destination = destPath;
-    }
-    {
-      type = "windows-shell";
-      inline = ["reg import ${destPath}"];
-    }
-  ];
-
-  initialRegistryFile = writeRegistryFile {
-    name = "initial.reg";
-    keys = {
-      # disable uac
-      # https://docs.microsoft.com/en-us/windows/security/identity-protection/user-account-control/user-account-control-group-policy-and-registry-key-settings
-      "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" = {
-        EnableLUA = false;
-        PromptOnSecureDesktop = false;
-        ConsentPromptBehaviorAdmin = 0;
-        EnableVirtualization = false;
-        EnableInstallerDetection = false;
-      };
-      # disable restore
-      "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore" = {
-        DisableSR = true;
-      };
-      # disable windows update
-      # https://docs.microsoft.com/en-us/windows/deployment/update/waas-wu-settings
-      "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU" = {
-        NoAutoUpdate = true;
-        AUOptions = 1;
-      };
-      # disable screensaver
-      "HKEY_CURRENT_USER\\Control Panel\\Desktop" = {
-        ScreenSaveActive = false;
-      };
-    };
-  };
 
   virtio_win_iso = pkgs.fetchurl {
     inherit (fixeds.fetchurl."https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso") url sha256 name;
