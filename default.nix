@@ -13,6 +13,7 @@ toolchain-windows = rec {
 
   runPackerStep =
     { name ? "packer-disk"
+    , memory ? 4096
     , disk ? null # set to the previous step, null for initial step
     , iso ? null
     , provisioners ? packerInitialProvisioners
@@ -28,6 +29,8 @@ toolchain-windows = rec {
     , run ? true # set to false to return generated script instead of actually running it
     , headless ? true # set to false to run VM with UI for debugging
     , meta ? null
+    , impure ? false
+    , debug ? false
     }: let
     guestfishCmd = ''
       ${libguestfs}/bin/guestfish \
@@ -55,10 +58,14 @@ toolchain-windows = rec {
           ${guestfishCmd}
         ''
       )}
+      ${lib.optionalString debug ''
+        echo 'Starting socat proxying VNC as Unix socket...'
+        ${pkgs.socat}/bin/socat unix-listen:vnc.socket,fork tcp-connect:127.0.0.1:5900 &
+      ''}
       echo 'Starting VM...'
       PATH=${qemu}/bin:$PATH CHECKPOINT_DISABLE=1 ${packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
         name = "${name}.template.json";
-        inherit disk iso provisioners headless;
+        inherit memory disk iso provisioners headless;
         extraDisk = if extraMount != null then "extraMount.img" else null;
       }}
       ${lib.optionalString (extraMount != null) ''
@@ -84,6 +91,9 @@ toolchain-windows = rec {
     })
     // (lib.optionalAttrs (meta != null) {
       inherit meta;
+    })
+    // (lib.optionalAttrs impure {
+      __impure = true;
     });
   in (if run then pkgs.runCommand name env else pkgs.writeScript "${name}.sh") script;
 
@@ -137,6 +147,9 @@ toolchain-windows = rec {
           ] ++
           # extra hdd
           lib.optional (extraDisk != null) [ "-drive" "file=${extraDisk},if=virtio,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,index=3" ];
+          # fixed VNC port for easier debugging
+          vnc_port_min = 5900;
+          vnc_port_max = 5900;
         }
         // (if disk != null then {
           inherit disk_size;
