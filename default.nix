@@ -124,7 +124,7 @@ toolchain-windows = rec {
             # https://www.qemu.org/docs/master/system/i386/hyperv.html
             [ "-cpu" "host,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,hv_vpindex,hv_runtime,hv_time,hv_synic,hv_stimer,hv_tlbflush,hv_ipi,hv_frequencies" ]
             # file-backed memory
-            [ "-machine" "type=pc,accel=kvm,memory-backend=pc.ram" ]
+            [ "-machine" "type=q35,accel=kvm,memory-backend=pc.ram" ]
             [ "-object" "memory-backend-file,id=pc.ram,size=${toString memory}M,mem-path=pc.ram,prealloc=off,share=on,discard-data=on" ]
             # main hdd
             [ "-drive" "file=${output_directory}/packer-qemu,if=virtio,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,index=0" ]
