@@ -10,9 +10,11 @@ toolchain-windows = rec {
   libguestfs = pkgs.libguestfs-with-appliance;
   # pre-BSL version of packer
   packer = pkgs.callPackage ./packer.nix {};
+  ovmf = pkgs.OVMFFull.fd;
+  inherit (pkgs) swtpm;
 
   runPackerStep =
-    { name ? "packer-disk"
+    { name ? "windows"
     , memory ? 4096
     , disk ? null # set to the previous step, null for initial step
     , iso ? null
@@ -21,11 +23,15 @@ toolchain-windows = rec {
     , extraMountIn ? true # whether to copy data into VM
     , extraMountOut ? true # whether to copy data out of VM
     , extraMountSize ? "32G"
+    , extraIso ? null
     , beforeScript ? ""
-    , afterScript ? "mv build/packer-qemu $out"
+    , afterScript ? ''
+        mkdir $out
+        mv build/packer-qemu $out/image.qcow2
+        mv VARS.fd tpm $out/
+      ''
     , outputHash ? null
     , outputHashAlgo ? "sha256"
-    , outputHashMode ? "flat"
     , run ? true # set to false to return generated script instead of actually running it
     , headless ? true # set to false to run VM with UI for debugging
     , meta ? null
@@ -42,7 +48,7 @@ toolchain-windows = rec {
         mkfs ntfs /dev/disk/guestfs/extraMount1'';
     extraMountArg = lib.escapeShellArg extraMount;
     script = ''
-      export HOME="$(mktemp -d)" # fix warning by guestfish
+      export HOME="$(mktemp -d)" # fix guestfish warning
       echo 'Executing beforeScript...'
       ${beforeScript}
       ${if extraMount != null && extraMountIn then ''
@@ -60,10 +66,24 @@ toolchain-windows = rec {
         echo 'Starting socat proxying VNC as Unix socket...'
         ${pkgs.socat}/bin/socat unix-listen:vnc.socket,fork tcp-connect:127.0.0.1:5900 &
       ''}
+      echo 'Starting swtpm...'
+      if [ ! -d tpm ]
+      then
+        ${if disk != null
+          then "cp -r --no-preserve=mode ${disk}/tpm tpm"
+          else "mkdir tpm"
+        }
+      fi
+      ${swtpm}/bin/swtpm socket --tpm2 --tpmstate dir=tpm --ctrl type=unixio,path=tpm.sock --daemon --terminate
       echo 'Starting VM...'
-      PATH=${qemu}/bin:$PATH CHECKPOINT_DISABLE=1 ${packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
+      if [ ! -f VARS.fd ]
+      then
+        cp --no-preserve=mode ${if disk != null then "${disk}/VARS.fd" else "${ovmf}/FV/OVMF_VARS.ms.fd"} ./VARS.fd
+      fi
+      PATH=${qemu}/bin:$PATH ${lib.optionalString debug "PACKER_LOG=1"} CHECKPOINT_DISABLE=1 ${packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
         name = "${name}.template.json";
-        inherit memory disk iso provisioners headless;
+        inherit memory iso extraIso provisioners headless debug;
+        disk = if disk != null then "${disk}/image.qcow2" else null;
         extraDisk = "extraMount.img";
       }}
       echo 'Clearing RAM file...'
@@ -85,7 +105,7 @@ toolchain-windows = rec {
     env = {
       requiredSystemFeatures = ["kvm"];
     } // (lib.optionalAttrs (outputHash != null) {
-      inherit outputHash outputHashAlgo outputHashMode;
+      inherit outputHash outputHashAlgo;
     })
     // (lib.optionalAttrs (meta != null) {
       inherit meta;
@@ -102,10 +122,12 @@ toolchain-windows = rec {
     , disk ? null
     , disk_size ? "256G"
     , iso ? null
+    , extraIso ? null
     , output_directory ? "build"
     , provisioners
     , extraDisk ? null
     , headless ? true
+    , debug ? false
     }: pkgs.writeText name (builtins.toJSON {
       builders = [(
         {
@@ -126,18 +148,49 @@ toolchain-windows = rec {
             # file-backed memory
             [ "-machine" "type=q35,accel=kvm,memory-backend=pc.ram" ]
             [ "-object" "memory-backend-file,id=pc.ram,size=${toString memory}M,mem-path=pc.ram,prealloc=off,share=on,discard-data=on" ]
+            # ACHI for hdds
+            [ "-device" "ahci,id=ahci0" ]
+            # ACHI for cdroms
+            [ "-device" "ahci,id=ahci1" ]
             # main hdd
-            [ "-drive" "file=${output_directory}/packer-qemu,if=virtio,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,index=0" ]
+            [ "-drive" "file=${output_directory}/packer-qemu,if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd0" ]
+            [ "-device" "ide-hd,bus=ahci0.0,drive=drive-hd0,id=hd0,bootindex=0" ]
+            # UEFI
+            [ "-drive" "if=pflash,format=raw,readonly=on,file=${ovmf}/FV/OVMF_CODE.ms.fd" ]
+            [ "-drive" "if=pflash,format=raw,file=VARS.fd" ]
+            # TPM
+            [ "-chardev" "socket,id=chrtpm,path=tpm.sock" ]
+            [ "-tpmdev" "emulator,id=tpm0,chardev=chrtpm" ]
+            [ "-device" "tpm-tis,tpmdev=tpm0" ]
+            # better controls for debugging
+            [ "-usb" ] [ "-device" "usb-tablet" ]
           ] ++
-          # cdroms
+          # cdroms and floppy
           lib.optionals (disk == null && iso != null) [
             # main cdrom
-            [ "-drive" "file=${iso.iso},media=cdrom,index=1" ]
+            [ "-drive" "file=${iso.iso},if=none,format=raw,media=cdrom,id=drive-cd0" ]
+            [ "-device" "ide-cd,bus=ahci1.0,drive=drive-cd0,id=cd0,bootindex=1" ]
             # virtio-win cdrom
-            [ "-drive" "file=${virtio_win_iso},media=cdrom,index=2" ]
+            [ "-drive" "file=${virtio_win_iso},if=none,format=raw,media=cdrom,id=drive-cd1" ]
+            [ "-device" "ide-cd,bus=ahci1.1,drive=drive-cd1,id=cd1,bootindex=2" ]
+            # floppy
+            [ "-drive" "file=fat:floppy:${pkgs.runCommand "autounattend-dir" {} ''
+              mkdir $out
+              cp ${iso.autounattend} $out/Autounattend.xml
+            ''},format=raw,readonly=on,if=none,id=floppy0" ]
+            [ "-device" "isa-fdc,id=fdc0" ]
+            [ "-device" "floppy,bus=fdc0.0,drive=floppy0" ]
           ] ++
           # extra hdd
-          lib.optional (extraDisk != null) [ "-drive" "file=${extraDisk},if=virtio,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,index=3" ];
+          lib.optionals (extraDisk != null) [
+            [ "-drive" "file=${extraDisk},if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd1" ]
+            [ "-device" "ide-hd,bus=ahci0.1,drive=drive-hd1,id=hd1,bootindex=3" ]
+          ] ++
+          # extra iso
+          lib.optionals (extraIso != null) [
+            [ "-drive" "file=${extraIso},if=none,format=raw,media=cdrom,id=drive-cd2" ]
+            [ "-device" "ide-cd,bus=ahci0.2,drive=drive-cd2,id=cd2,bootindex=4" ]
+          ];
           # fixed VNC port for easier debugging
           vnc_port_min = 5900;
           vnc_port_max = 5900;
@@ -153,10 +206,8 @@ toolchain-windows = rec {
           inherit disk_size;
           iso_url = iso.iso;
           iso_checksum = iso.checksum;
-          floppy_files = ["${pkgs.runCommand "autounattend-dir" {} ''
-            mkdir $out
-            cp ${iso.autounattend} $out/Autounattend.xml
-          ''}/Autounattend.xml"];
+          boot_command = ["<enter><wait><enter><wait><enter>"]; # "press any key to boot from cd"
+          boot_wait = "1s";
         } else {})
       )];
       provisioners =
@@ -219,7 +270,7 @@ toolchain-windows = rec {
         type = "powershell";
         inline = [
           # apply registry tweaks
-          ''reg import F:\work\initial.reg''
+          ''reg import D:\work\initial.reg''
           # uninstall defender
           "Uninstall-WindowsFeature -Name Windows-Defender -Remove"
           # power options
@@ -229,7 +280,9 @@ toolchain-windows = rec {
           "powercfg /change -monitor-timeout-dc 0"
           # install recent Microsoft root code signing certificate required for some software
           # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
-          ''Import-Certificate -FilePath F:\work\microsoft.crt -CertStoreLocation Cert:\LocalMachine\Root''
+          ''Import-Certificate -FilePath D:\work\microsoft.crt -CertStoreLocation Cert:\LocalMachine\Root''
+          # confirm Secure Boot
+          ''Confirm-SecureBootUEFI''
         ];
       }
       {
