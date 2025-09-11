@@ -357,6 +357,10 @@ toolchain-windows = rec {
     inherit makemsix;
 
     inherit (msvc {}) get-clang-version;
+    get-clang-version_18 = (msvc {
+      version = "18";
+      versionPreview = true;
+    }).get-clang-version;
 
     autoUpdateScript = coil.toolchain.autoUpdateFixedsScript fixedsFile;
   };

@@ -5,6 +5,7 @@
 }:
 
 { version ? "17"
+, versionPreview ? false
 , buildConfig ? "Release"
 }:
 
@@ -12,7 +13,7 @@ rec {
   components = toolchain-windows.runPackerStep {
     name = "msvcComponents-${version}";
     disk = ((toolchain-msvs.vsPackages {
-      inherit version;
+      inherit version versionPreview;
     }).resolve {
       product = "Microsoft.VisualStudio.Product.BuildTools";
       packageIds = [
