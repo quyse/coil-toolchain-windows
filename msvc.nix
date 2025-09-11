@@ -81,7 +81,7 @@ rec {
       # needed for clang-cl modules support
       (pkgs.fetchpatch {
         url = "https://github.com/llvm/llvm-project/pull/121046.patch";
-        hash = "sha256-ZSi3t8sEDfbw4hKIebYjZ17pnniPCMCltJ3/giWmNpI=";
+        hash = "sha256-WLkFUYgouLPn5wSV0L7ZUWWZ5ATm1KCezTDe2uqXGiw=";
       })
     ];
     cmakeFlags = [
