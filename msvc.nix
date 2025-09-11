@@ -119,8 +119,13 @@ rec {
       ln -s ${pkgs.writeScript "windowsBuildEnv-setupHook" ''
         export PATH=${toolchain-windows.wine}/bin:$PATH
         ${toolchain-windows.initWinePrefix}
+        MSVC_PREFIX=""
+        for i in ${components}/msvc/VC/Tools/MSVC/*
+        do
+          MSVC_PREFIX="$i"
+        done
         export WINEPATH="${toolchain-windows.makeWinePaths ([
-          "${components}/msvc/VC/Tools/MSVC/*/bin/Hostx64/x64"
+          "$MSVC_PREFIX/bin/Hostx64/x64"
         ]
         ++ lib.optional (llvmBin != null) (pkgs.runCommand "llvmBin" {} ''
             mkdir $out
@@ -134,8 +139,7 @@ rec {
           ''"$(find ${components}/sdk/10/bin -iname '*.exe' -exec dirname {} \; | grep 'x64$' | sort -u)"''
         ])};C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem"
         export INCLUDE="${toolchain-windows.makeWinePaths [
-          "${components}/msvc/VC/Tools/MSVC/*/include"
-          "${components}/sdk/10/Include/*/*"
+          "$MSVC_PREFIX/include"
           "${components}/sdk/10/Include/*/ucrt"
           "${components}/sdk/10/Include/*/shared"
           "${components}/sdk/10/Include/*/um"
@@ -143,7 +147,7 @@ rec {
           "${components}/sdk/10/Include/*/cppwinrt"
         ]}"
         export LIB="${toolchain-windows.makeWinePaths [
-          "${components}/msvc/VC/Tools/MSVC/*/lib/x64"
+          "$MSVC_PREFIX/lib/x64"
           "${components}/sdk/10/Lib/*/ucrt/x64"
           "${components}/sdk/10/Lib/*/um/x64"
         ]}"
