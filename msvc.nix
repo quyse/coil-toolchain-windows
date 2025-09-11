@@ -58,7 +58,17 @@ rec {
     hash = "sha256-uLtrqKeabAY0tjxCbg+h0Mv+kr1hw9rirLlVKvjGqb0=";
   };
 
-  llvmPackages = pkgs.llvmPackages_19;
+  # determine clang version
+  get-clang-version = mkCmakePkg {
+    name = "get-clang-version";
+    src = ./get-clang-version;
+    postInstall = ''
+      wine $out/bin/get-clang-version.exe > $out/bin/version.txt
+    '';
+  };
+  clangVersion = builtins.readFile "${get-clang-version}/bin/version.txt";
+
+  llvmPackages = pkgs."llvmPackages_${clangVersion}";
   llvm = mkCmakePkg {
     inherit (llvmPackages.tools.libllvm) pname version meta;
     reduceDeps = false;

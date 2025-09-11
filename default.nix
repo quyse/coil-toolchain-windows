@@ -356,6 +356,8 @@ toolchain-windows = rec {
     initialDisk = initialDisk {};
     inherit makemsix;
 
+    inherit (msvc {}) get-clang-version;
+
     autoUpdateScript = coil.toolchain.autoUpdateFixedsScript fixedsFile;
   };
 };
