@@ -221,6 +221,8 @@ rec {
     , postPatch ? null
     , preConfigure ? null
     , postConfigure ? null
+    , preBuild ? null
+    , postBuild ? null
     , doCheck ? true
     , preInstall ? null
     , postInstall ? null
@@ -228,7 +230,7 @@ rec {
     , buildEnv ? defaultBuildEnv
     , reduceDeps ? true
     }: pkgs.stdenvNoCC.mkDerivation {
-    inherit pname version name src sourceRoot buildInputs patches postPatch preConfigure postConfigure doCheck preInstall postInstall meta;
+    inherit pname version name src sourceRoot buildInputs patches postPatch preConfigure postConfigure preBuild postBuild doCheck preInstall postInstall meta;
     nativeBuildInputs = [
       buildEnv
     ] ++ nativeBuildInputs;
@@ -243,7 +245,9 @@ rec {
       runHook postConfigure
     '';
     buildPhase = ''
+      runHook preBuild
       wine cmake --build ${buildDir} --config ${buildConfig} -j ''$NIX_BUILD_CORES
+      runHook postBuild
     '';
     checkPhase = ''
       wine ctest --test-dir ${buildDir}
