@@ -110,6 +110,7 @@ rec {
       })
     ];
     doCheck = false;
+    buildEnv = buildEnvForCMake;
   };
 
   buildEnvFun = { llvmBin, cmakeBin }: stdenv.mkDerivation {
@@ -173,9 +174,14 @@ rec {
     reduceDeps = false;
   };
 
-  buildEnv = buildEnvFun {
+  buildEnvForCMake = buildEnvFun {
     llvmBin = null;
     cmakeBin = null;
+  };
+
+  buildEnv = buildEnvFun {
+    llvmBin = null;
+    cmakeBin = "${cmake}/bin";
   };
 
   buildEnvWithModulesSupport = buildEnvFun {
