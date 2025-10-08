@@ -252,7 +252,10 @@ rec {
         -DCMAKE_INSTALL_PREFIX=$(winepath -w $out) \
         -DCMAKE_INSTALL_INCLUDEDIR=$(winepath -w $out/include) \
         -DBUILD_TESTING=${if doCheck then "ON" else "OFF"} \
-        ${lib.escapeShellArgs cmakeFlags}
+        ${lib.escapeShellArgs cmakeFlags}${
+          # HACK: msvc 18 insiders cmake crashes with exit code 5 here right in the end of configuration; ignore it
+          lib.optionalString (versionPreview && "${buildEnv}" == "${buildEnvForCMake}") '' || true''
+        }
       runHook postConfigure
     '';
     buildPhase = ''
