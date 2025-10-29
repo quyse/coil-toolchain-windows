@@ -71,9 +71,9 @@ rec {
 
   llvmPackages = pkgs."llvmPackages_${clangVersion}";
   llvm = mkCmakePkg {
-    inherit (llvmPackages.tools.libllvm) pname version meta;
+    inherit (llvmPackages.libllvm) pname version meta;
     reduceDeps = false;
-    src = llvmPackages.tools.libllvm.passthru.monorepoSrc;
+    src = llvmPackages.libllvm.passthru.monorepoSrc;
     sourceDir = "llvm";
     preConfigure = ''
       export WINEPATH="$WINEPATH;${toolchain-windows.makeWinePaths [python]}"
