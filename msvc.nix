@@ -4,8 +4,8 @@
 , toolchain-msvs
 }:
 
-{ version ? "17"
-, versionPreview ? false
+{ version ? "18"
+, versionChannel ? "stable"
 , buildConfig ? "Release"
 }:
 
@@ -13,7 +13,7 @@ rec {
   components = toolchain-windows.runPackerStep {
     name = "msvcComponents-${version}";
     disk = ((toolchain-msvs.vsPackages {
-      inherit version versionPreview;
+      inherit version versionChannel;
     }).resolve {
       product = "Microsoft.VisualStudio.Product.BuildTools";
       packageIds = [
@@ -91,6 +91,15 @@ rec {
       "-DLLVM_INCLUDE_TESTS=OFF"
     ];
     doCheck = false;
+  };
+
+  # seed cmake from official binaries
+  # cmake from msvs is broken in Wine since msvs 18.0.0
+  cmakeBinary = let
+    version = "3.31.6";
+  in pkgs.fetchzip {
+    url = "https://github.com/Kitware/CMake/releases/download/v${version}/cmake-${version}-windows-x86_64.zip";
+    hash = "sha256-cfPA3z2ffbIeiHqovHJBIb9R6dHG2l9uqKJBL39OpVI=";
   };
 
   cmake = mkCmakePkg rec {
@@ -176,7 +185,7 @@ rec {
 
   buildEnvForCMake = buildEnvFun {
     llvmBin = null;
-    cmakeBin = null;
+    cmakeBin = "${cmakeBinary}/bin";
   };
 
   buildEnv = buildEnvFun {
@@ -252,10 +261,7 @@ rec {
         -DCMAKE_INSTALL_PREFIX=$(winepath -w $out) \
         -DCMAKE_INSTALL_INCLUDEDIR=$(winepath -w $out/include) \
         -DBUILD_TESTING=${if doCheck then "ON" else "OFF"} \
-        ${lib.escapeShellArgs cmakeFlags}${
-          # HACK: msvc 18 insiders cmake crashes with exit code 5 here right in the end of configuration; ignore it
-          lib.optionalString (versionPreview && "${buildEnv}" == "${buildEnvForCMake}") '' || true''
-        }
+        ${lib.escapeShellArgs cmakeFlags}
       runHook postConfigure
     '';
     buildPhase = ''
