@@ -1,0 +1,118 @@
+# original by Sharadh Rajaraman: https://gitlab.kitware.com/cmake/cmake/-/merge_requests/9762.patch
+# rebased to cmake 4.2.0
+diff --git a/.gitlab/ci/configure_windows_clang_ninja.cmake b/.gitlab/ci/configure_windows_clang_ninja.cmake
+index 214c754891..e8a017148e 100644
+--- a/.gitlab/ci/configure_windows_clang_ninja.cmake
++++ b/.gitlab/ci/configure_windows_clang_ninja.cmake
+@@ -1,4 +1,2 @@
+-if("$ENV{CMAKE_CI_BUILD_NAME}" MATCHES "(^|_)gnu(_|$)")
+-  set(CMake_TEST_MODULE_COMPILATION "named,compile_commands,collation,partitions,internal_partitions,export_bmi,install_bmi,shared,bmionly,build_database" CACHE STRING "")
+-endif()
++set(CMake_TEST_MODULE_COMPILATION "named,compile_commands,collation,partitions,internal_partitions,export_bmi,install_bmi,shared,bmionly,build_database" CACHE STRING "")
+ include("${CMAKE_CURRENT_LIST_DIR}/configure_windows_clang_common.cmake")
+diff --git a/Modules/Compiler/Clang-CXX.cmake b/Modules/Compiler/Clang-CXX.cmake
+index 87a4cdd06a..074c91ad07 100644
+--- a/Modules/Compiler/Clang-CXX.cmake
++++ b/Modules/Compiler/Clang-CXX.cmake
+@@ -25,42 +25,51 @@ if("x${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "xMSVC")
+   endif()
+ endif()
+ 
+-if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0)
++if(("x${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "xGNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0) OR
++   ("x${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "xMSVC" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.1))
++  if (CMAKE_CXX_COMPILER_CLANG_RESOURCE_DIR)
++    set(_clang_scan_deps_resource_dir
++      " -resource-dir \"${CMAKE_CXX_COMPILER_CLANG_RESOURCE_DIR}\"")
++  else()
++    set(_clang_scan_deps_resource_dir "")
++  endif ()
++  if (CMAKE_HOST_WIN32)
++    # `rename` doesn't overwrite and doesn't retry in case of "target file is
++    # busy".
++    set(_clang_scan_deps_mv "\"${CMAKE_COMMAND}\" -E rename")
++  else ()
++    set(_clang_scan_deps_mv "mv")
++  endif ()
++
+   if("x${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "xGNU")
+-    if (CMAKE_CXX_COMPILER_CLANG_RESOURCE_DIR)
+-      set(_clang_scan_deps_resource_dir
+-        " -resource-dir \"${CMAKE_CXX_COMPILER_CLANG_RESOURCE_DIR}\"")
+-    else()
+-      set(_clang_scan_deps_resource_dir "")
+-    endif ()
+-    if (CMAKE_HOST_WIN32)
+-      # `rename` doesn't overwrite and doesn't retry in case of "target file is
+-      # busy".
+-      set(_clang_scan_deps_mv "\"${CMAKE_COMMAND}\" -E rename")
+-    else ()
+-      set(_clang_scan_deps_mv "mv")
+-    endif ()
+-    string(CONCAT CMAKE_CXX_SCANDEP_SOURCE
+-      "\"${CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS}\""
+-      " -format=p1689"
+-      " --"
+-      " <CMAKE_CXX_COMPILER> <DEFINES> <INCLUDES> <FLAGS>"
+-      " -x c++ <SOURCE> -c -o <OBJECT>"
+-      "${_clang_scan_deps_resource_dir}"
+-      " -MT <DYNDEP_FILE>"
+-      " -MD -MF <DEP_FILE>"
+-      # Write to a temporary file. If the scan fails, we do not want to update
+-      # the actual output file as `ninja` (at least) assumes that failed
+-      # commands either delete or leave output files alone. See Issue#25419.
+-      " > <DYNDEP_FILE>.tmp"
+-      # We cannot use `copy_if_different` as the rule does not have a feature
+-      # analogous to `ninja`'s `restat = 1`. It would also leave behind the
+-      # `.tmp` file.
+-      " && ${_clang_scan_deps_mv} <DYNDEP_FILE>.tmp <DYNDEP_FILE>")
+-    unset(_clang_scan_deps_resource_dir)
+-    unset(_clang_scan_deps_mv)
+-    set(CMAKE_CXX_MODULE_MAP_FORMAT "clang")
+-    set(CMAKE_CXX_MODULE_MAP_FLAG "@<MODULE_MAP_FILE>")
+-    set(CMAKE_CXX_MODULE_BMI_ONLY_FLAG "--precompile")
++    set(_clang_passthrough_prefix "")
++  elseif("x${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "xMSVC")
++    set(_clang_passthrough_prefix "-clang:")
+   endif()
++
++  string(CONCAT CMAKE_CXX_SCANDEP_SOURCE
++  "\"${CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS}\""
++  " -format=p1689"
++  " --"
++  " <CMAKE_CXX_COMPILER> <DEFINES> <INCLUDES> <FLAGS>"
++  " -x c++ <SOURCE> -c ${_clang_passthrough_prefix}-o<OBJECT>"
++  "${_clang_scan_deps_resource_dir}"
++  " ${_clang_passthrough_prefix}-MT ${_clang_passthrough_prefix}<DYNDEP_FILE>"
++  " ${_clang_passthrough_prefix}-MD ${_clang_passthrough_prefix}-MF ${_clang_passthrough_prefix}<DEP_FILE>"
++  # Write to a temporary file. If the scan fails, we do not want to update
++  # the actual output file as `ninja` (at least) assumes that failed
++  # commands either delete or leave output files alone. See Issue#25419.
++  " > <DYNDEP_FILE>.tmp"
++  # We cannot use `copy_if_different` as the rule does not have a feature
++  # analogous to `ninja`'s `restat = 1`. It would also leave behind the
++  # `.tmp` file.
++  " && ${_clang_scan_deps_mv} <DYNDEP_FILE>.tmp <DYNDEP_FILE>")
++
++  unset(_clang_passthrough_prefix)
++  unset(_clang_scan_deps_resource_dir)
++  unset(_clang_scan_deps_mv)
++
++  set(CMAKE_CXX_MODULE_MAP_FORMAT "clang")
++  set(CMAKE_CXX_MODULE_MAP_FLAG "@<MODULE_MAP_FILE>")
++  set(CMAKE_CXX_MODULE_BMI_ONLY_FLAG "--precompile")
+ endif()
+diff --git a/Modules/Platform/Windows-Clang.cmake b/Modules/Platform/Windows-Clang.cmake
+index 82e9d8205e..b77112b719 100644
+--- a/Modules/Platform/Windows-Clang.cmake
++++ b/Modules/Platform/Windows-Clang.cmake
+@@ -236,6 +236,9 @@ if("x${CMAKE_C_SIMULATE_ID}" STREQUAL "xMSVC"
+       unset(CMAKE_${lang}_COMPILE_OPTIONS_MSVC_DEBUG_INFORMATION_FORMAT_EditAndContinue) # -ZI not supported by Clang
+       set(CMAKE_${lang}_COMPILE_OPTIONS_WARNING_AS_ERROR "-WX")
+       set(CMAKE_INCLUDE_SYSTEM_FLAG_${lang} "-imsvc")
++      # clang-cl honors -Fo for compilation but not for --precompile (BMI-only).
++      # It honors -clang:-o for both.
++      string(REPLACE "/Fo<OBJECT>" "-clang:-o<OBJECT>" CMAKE_${lang}_COMPILE_OBJECT "${CMAKE_${lang}_COMPILE_OBJECT}")
+ 
+       set(CMAKE_${lang}_LINK_MODE LINKER)
+     endmacro()

@@ -1,9 +1,23 @@
 {
   "fetchgit": {
+    "https://github.com/Kitware/CMake.git##latest_release": {
+      "rev": "dd3e87222dde178743ff0ed1e95cd195ea33a37f",
+      "sha256": "105j8a74n712p9vzqcxb5ckap5vwpxfxv95xd9prwicjpbv0mij7",
+      "tag": "v4.2.0",
+      "url": "https://github.com/Kitware/CMake.git"
+    },
     "https://github.com/microsoft/msix-packaging.git": {
       "rev": "efeb9dad695a200c2beaddcba54a52c8320bd135",
       "sha256": "1qc0lapp4zmaf70n4z4di6j20i3l5fmynq3b987j93gad9jd08m7",
       "url": "https://github.com/microsoft/msix-packaging.git"
+    }
+  },
+  "fetchrelease": {
+    "https://github.com/Kitware/CMake#^cmake-[0-9.]+-windows-x86_64\\.zip$": {
+      "asset_id": 318438564,
+      "name": "cmake-4.2.0-windows-x86_64.zip",
+      "sha256": "0iggn17ba0skcy7knidiqc9c130n9gichl8y61mn9x7mqhbaadfg",
+      "url": "https://github.com/Kitware/CMake/releases/download/v4.2.0/cmake-4.2.0-windows-x86_64.zip"
     }
   },
   "fetchurl": {

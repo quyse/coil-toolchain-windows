@@ -2,6 +2,7 @@
 , lib ? pkgs.lib
 , toolchain-windows
 , toolchain-msvs
+, fixeds
 }:
 
 { version ? "18"
@@ -97,28 +98,31 @@ rec {
 
   # seed cmake from official binaries
   # cmake from msvs is broken in Wine since msvs 18.0.0
-  cmakeBinary = let
-    version = "3.31.6";
-  in pkgs.fetchzip {
-    url = "https://github.com/Kitware/CMake/releases/download/v${version}/cmake-${version}-windows-x86_64.zip";
-    hash = "sha256-cfPA3z2ffbIeiHqovHJBIb9R6dHG2l9uqKJBL39OpVI=";
-  };
+  cmakeBinary = pkgs.runCommand "cmake-windows-binary" {
+    nativeBuildInputs = [
+      pkgs.unzip
+    ];
+  } ''
+    unzip -q ${pkgs.fetchurl {
+      inherit (fixeds.fetchrelease."https://github.com/Kitware/CMake#^cmake-[0-9.]+-windows-x86_64\\.zip$") url name sha256;
+    }}
+    mv cmake-* $out
+  '';
 
   cmake = mkCmakePkg rec {
     inherit (pkgs.cmake) meta;
     reduceDeps = false;
-    pname = "cmake";
-    version = "3.31.6";
+    name = "cmake-windows";
     src = pkgs.fetchgit {
-      url = "https://gitlab.kitware.com/cmake/cmake.git";
-      rev = "v${version}";
-      hash = "sha256-+IzKmmpCrHL9XlNNoFj/mUB0YvNCVQN+GhTb4Ks4d8o=";
+      inherit (fixeds.fetchgit."https://github.com/Kitware/CMake.git##latest_release") url rev sha256;
     };
     patches = [
-      (pkgs.fetchpatch {
-        url = "https://gitlab.kitware.com/cmake/cmake/-/merge_requests/9762.patch";
-        hash = "sha256-d2pUt/omiEy/5DXvKMugxuJi4k49QI5YaKvaYCxiG1o=";
-      })
+      ./msvc-cmake-cpp-modules.patch
+    ];
+    cmakeFlags = [
+      # using non-DLL runtime somehow fixes CMake crash
+      # FIXME: probably a deeper issue here with MSVC DLLs
+      "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
     ];
     doCheck = false;
     buildEnv = buildEnvForCMake;
@@ -260,8 +264,8 @@ rec {
       runHook preConfigure
       wine cmake -S ${sourceDir} -B ${buildDir} \
         -DCMAKE_BUILD_TYPE=${buildConfig} \
-        -DCMAKE_INSTALL_PREFIX=$(winepath -w $out) \
-        -DCMAKE_INSTALL_INCLUDEDIR=$(winepath -w $out/include) \
+        -DCMAKE_INSTALL_PREFIX=Z:"$out" \
+        -DCMAKE_INSTALL_INCLUDEDIR=Z:"$out"/include \
         -DBUILD_TESTING=${if doCheck then "ON" else "OFF"} \
         ${lib.escapeShellArgs cmakeFlags}
       runHook postConfigure

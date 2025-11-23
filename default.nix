@@ -401,7 +401,7 @@ toolchain-windows = rec {
   };
 
   msvc = import ./msvc.nix {
-    inherit pkgs;
+    inherit pkgs fixeds;
     inherit (coil) toolchain-windows toolchain-msvs;
   };
 
