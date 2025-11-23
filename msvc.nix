@@ -10,18 +10,20 @@
 }:
 
 rec {
+  inherit ((toolchain-msvs.vsPackages {
+    inherit version versionChannel;
+  }).resolve {
+    product = "Microsoft.VisualStudio.Product.BuildTools";
+    packageIds = [
+      "Microsoft.VisualStudio.Workload.VCTools"
+      "Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Llvm.Clang"
+    ];
+    includeRecommended = true;
+  }) disk;
+
   components = toolchain-windows.runPackerStep {
     name = "msvcComponents-${version}";
-    disk = ((toolchain-msvs.vsPackages {
-      inherit version versionChannel;
-    }).resolve {
-      product = "Microsoft.VisualStudio.Product.BuildTools";
-      packageIds = [
-        "Microsoft.VisualStudio.Workload.VCTools"
-        "Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Llvm.Clang"
-      ];
-      includeRecommended = true;
-    }).disk;
+    inherit disk;
     extraMount = "work";
     extraMountIn = false;
     provisioners = [
@@ -54,9 +56,9 @@ rec {
 
   # needed for llvm
   python = pkgs.fetchzip {
-    url = "https://www.python.org/ftp/python/3.13.2/python-3.13.2-embed-amd64.zip";
+    url = "https://www.python.org/ftp/python/3.14.0/python-3.14.0-embed-amd64.zip";
     stripRoot = false;
-    hash = "sha256-uLtrqKeabAY0tjxCbg+h0Mv+kr1hw9rirLlVKvjGqb0=";
+    hash = "sha256-TGVvEbiZOyDxWSa+lzVaV6BpSnRZMYw3OnOOoVvHC24=";
   };
 
   # determine clang version
