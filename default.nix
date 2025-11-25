@@ -14,7 +14,7 @@ toolchain-windows = rec {
   inherit (pkgs) swtpm;
 
   runPackerStep =
-    { name ? "windows"
+    { name
     , memory ? 4096
     , disk ? null # set to the previous step, null for initial step
     , iso ? null
