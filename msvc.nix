@@ -112,7 +112,7 @@ rec {
   cmake = mkCmakePkg rec {
     inherit (pkgs.cmake) meta;
     reduceDeps = false;
-    name = "cmake-windows";
+    name = "cmake";
     src = pkgs.fetchgit {
       inherit (fixeds.fetchgit."https://github.com/Kitware/CMake.git##latest_release") url rev sha256;
     };
@@ -128,12 +128,13 @@ rec {
     buildEnv = buildEnvForCMake;
   };
 
-  buildEnvFun = { llvmBin, cmakeBin }: stdenv.mkDerivation {
-    name = "windowsBuildEnv";
+  buildEnvFun = { nameSuffix, llvmBin, cmakeBin }: stdenv.mkDerivation {
+    name = "windowsBuildEnv-${nameSuffix}";
+    inherit nameSuffix;
 
     buildCommand = ''
       mkdir -p $out/nix-support
-      ln -s ${pkgs.writeScript "windowsBuildEnv-setupHook" ''
+      ln -s ${pkgs.writeScript "windowsBuildEnv-${nameSuffix}-setupHook" ''
         export PATH=${toolchain-windows.wine}/bin:$PATH
         ${toolchain-windows.initWinePrefix}
         MSVC_PREFIX=""
@@ -190,16 +191,19 @@ rec {
   };
 
   buildEnvForCMake = buildEnvFun {
+    nameSuffix = "msvc_cmakebin";
     llvmBin = null;
     cmakeBin = "${cmakeBinary}/bin";
   };
 
   buildEnv = buildEnvFun {
+    nameSuffix = "msvc";
     llvmBin = null;
     cmakeBin = "${cmake}/bin";
   };
 
   buildEnvWithModulesSupport = buildEnvFun {
+    nameSuffix = "msvc_cppm";
     llvmBin = "${llvm}/bin";
     cmakeBin = "${cmake}/bin";
   };
@@ -234,7 +238,7 @@ rec {
   in lib.makeOverridable (
     { pname ? null
     , version ? null
-    , name ? "${pname}-${version}"
+    , name ? null
     , src
     , sourceRoot ? null
     , nativeBuildInputs ? []
@@ -255,8 +259,14 @@ rec {
     , meta ? {}
     , buildEnv ? defaultBuildEnv
     , reduceDeps ? true
-    }: pkgs.stdenvNoCC.mkDerivation {
-    inherit pname version name src sourceRoot buildInputs patches postPatch preConfigure postConfigure preBuild postBuild doCheck preInstall postInstall meta;
+    }: pkgs.stdenvNoCC.mkDerivation (
+    lib.optionalAttrs (name != null) {
+      name = "${name}-${buildEnv.nameSuffix}";
+    } //
+    lib.optionalAttrs (pname != null) {
+      pname = "${pname}-${buildEnv.nameSuffix}";
+    } // {
+    inherit version src sourceRoot buildInputs patches postPatch preConfigure postConfigure preBuild postBuild doCheck preInstall postInstall meta;
     nativeBuildInputs = [
       buildEnv
     ] ++ nativeBuildInputs;
@@ -286,5 +296,5 @@ rec {
       }}
       runHook postInstall
     '';
-  });
+  }));
 }
