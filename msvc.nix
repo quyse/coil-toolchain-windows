@@ -109,20 +109,18 @@ rec {
     mv cmake-* $out
   '';
 
-  cmake = mkCmakePkg rec {
+  cmake = let
+    fixed = fixeds.fetchgit."https://github.com/Kitware/CMake.git##latest_release";
+  in mkCmakePkg rec {
+    pname = "cmake";
+    version = lib.elemAt (lib.match "v(.+)" fixed.tag) 0;
     inherit (pkgs.cmake) meta;
     reduceDeps = false;
-    name = "cmake";
     src = pkgs.fetchgit {
-      inherit (fixeds.fetchgit."https://github.com/Kitware/CMake.git##latest_release") url rev sha256;
+      inherit (fixed) url rev sha256;
     };
     patches = [
       ./msvc-cmake-cpp-modules.patch
-    ];
-    cmakeFlags = [
-      # using non-DLL runtime somehow fixes CMake crash
-      # FIXME: probably a deeper issue here with MSVC DLLs
-      "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
     ];
     doCheck = false;
     buildEnv = buildEnvForCMake;
@@ -181,6 +179,30 @@ rec {
         # workaround for https://bugs.winehq.org/show_bug.cgi?id=21259
         wine start mspdbsrv.exe -start -spawn -shutdowntime -1
       ''} $out/nix-support/setup-hook
+    '';
+  };
+
+  redist = stdenv.mkDerivation {
+    name = "msvc-redist-${version}";
+    nativeBuildInputs = [
+      pkgs.jq
+    ];
+    buildCommand = ''
+      mkdir -p $out/{bin,nix-support}
+      MSVC_REDIST_PREFIX=""
+      for i in ${components}/msvc/VC/Redist/MSVC/*/x64
+      do
+        MSVC_REDIST_PREFIX="$i"
+      done
+
+      # link DLLs to bin/
+      find "$MSVC_REDIST_PREFIX" -name '*.dll' -exec ln -st $out/bin {} +
+
+      # add DLL names to WINEDLLOVERRIDES
+      find "$MSVC_REDIST_PREFIX" -name '*.dll' -exec basename -s .dll {} + \
+      | jq -R . \
+      | jq -rs 'sort|"export WINEDLLOVERRIDES=\(join(","))=n,b"' \
+      > $out/nix-support/setup-hook
     '';
   };
 
@@ -259,17 +281,22 @@ rec {
     , meta ? {}
     , buildEnv ? defaultBuildEnv
     , reduceDeps ? true
-    }: pkgs.stdenvNoCC.mkDerivation (
+    }: let
+      extendedBuildInputs = [
+        redist
+      ] ++ buildInputs;
+    in pkgs.stdenvNoCC.mkDerivation (
     lib.optionalAttrs (name != null) {
       name = "${name}-${buildEnv.nameSuffix}";
     } //
     lib.optionalAttrs (pname != null) {
       pname = "${pname}-${buildEnv.nameSuffix}";
     } // {
-    inherit version src sourceRoot buildInputs patches postPatch preConfigure postConfigure preBuild postBuild doCheck preInstall postInstall meta;
+    inherit version src sourceRoot patches postPatch preConfigure postConfigure preBuild postBuild doCheck preInstall postInstall meta;
     nativeBuildInputs = [
       buildEnv
     ] ++ nativeBuildInputs;
+    buildInputs = extendedBuildInputs;
     configurePhase = ''
       runHook preConfigure
       wine cmake -S ${sourceDir} -B ${buildDir} \
@@ -292,7 +319,8 @@ rec {
       runHook preInstall
       wine cmake --install ${buildDir} --config ${buildConfig}
       ${finalizePkg {
-        inherit buildInputs reduceDeps;
+        buildInputs = extendedBuildInputs;
+        inherit reduceDeps;
       }}
       runHook postInstall
     '';
