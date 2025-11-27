@@ -344,15 +344,7 @@ toolchain-windows = rec {
     };
   };
 
-  wine = ((pkgs.winePackagesFor "wineWow64").minimal.override {
-    x11Support = true;
-    embedInstallers = true;
-  }).overrideAttrs (attrs: {
-    patches = attrs.patches ++ [
-      # https://bugs.winehq.org/show_bug.cgi?id=51869
-      ./wine_replacefile.patch
-    ];
-  });
+  wine = (pkgs.winePackagesFor "wineWow64").minimal;
 
   initWinePrefix = ''
     mkdir .wineprefix
