@@ -347,9 +347,21 @@ toolchain-windows = rec {
   wine = (pkgs.winePackagesFor "wineWow64").minimal;
 
   initWinePrefix = ''
+    echo -n 'Initializing Wine prefix... ' >&2
     mkdir .wineprefix
     export WINEPREFIX="$(readlink -f .wineprefix)" WINEDEBUG=-all
     wineboot
+    echo ' done.' >&2
+  '';
+
+  installWineMono = let
+    version = "10.3.0";
+  in ''
+    echo -n 'Installing Wine Mono... ' >&2
+    msiexec /qn /i ${pkgs.fetchurl {
+      inherit (fixeds.fetchurl."https://dl.winehq.org/wine/wine-mono/${version}/wine-mono-${version}-x86.msi") url sha256 name;
+    }}
+    echo ' done.' >&2
   '';
 
   # convert list of unix-style paths to windows-style PATH var
@@ -397,11 +409,31 @@ toolchain-windows = rec {
     inherit (coil) toolchain-windows toolchain-msvs;
   };
 
+  mkDotnet = version: pkgs.stdenvNoCC.mkDerivation {
+    pname = "dotnet";
+    inherit version;
+    nativeBuildInputs = [
+      pkgs.unzip
+    ];
+    buildCommand = ''
+      mkdir $out
+      unzip ${pkgs.fetchurl {
+        inherit (fixeds.fetchurl."https://aka.ms/dotnet/${version}/dotnet-runtime-win-x64.zip") url name sha256;
+      }} -d $out
+    '';
+    meta.license = lib.licenses.mit;
+  };
+  dotnet8 = mkDotnet "8.0";
+  dotnet9 = mkDotnet "9.0";
+  dotnet10 = mkDotnet "10.0";
+
   touch = {
     initialDisk = initialDisk {};
     inherit makemsix;
 
     inherit (msvc {}) get-clang-version;
+
+    inherit dotnet8 dotnet9 dotnet10;
 
     autoUpdateScript = coil.toolchain.autoUpdateFixedsScript fixedsFile;
   };

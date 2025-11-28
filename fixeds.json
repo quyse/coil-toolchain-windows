@@ -21,6 +21,34 @@
     }
   },
   "fetchurl": {
+    "https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.zip": {
+      "etag": "0x8DE2117CD419357",
+      "last-modified": "Tue, 11 Nov 2025 11:45:24 GMT",
+      "name": "dotnet-runtime-10.0.0-win-x64.zip",
+      "sha256": "19djhwdgcbyrs0aw82vr86453wiprwgkidl74h11jqdakvijbkb2",
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.0/dotnet-runtime-10.0.0-win-x64.zip"
+    },
+    "https://aka.ms/dotnet/8.0/dotnet-runtime-win-x64.zip": {
+      "etag": "0x8DE2114F8088F07",
+      "last-modified": "Tue, 11 Nov 2025 11:25:07 GMT",
+      "name": "dotnet-runtime-8.0.22-win-x64.zip",
+      "sha256": "0kc7rpllk20j44pxya4gbzc7sblnm4wi25gpnyh67sl6nsmcyy95",
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/8.0.22/dotnet-runtime-8.0.22-win-x64.zip"
+    },
+    "https://aka.ms/dotnet/9.0/dotnet-runtime-win-x64.zip": {
+      "etag": "0x8DE2114E5D84C8C",
+      "last-modified": "Tue, 11 Nov 2025 11:24:37 GMT",
+      "name": "dotnet-runtime-9.0.11-win-x64.zip",
+      "sha256": "0fkjzvcsdvhb51d8h5dml166g9f665rx742v7xqikpck0s38300k",
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/9.0.11/dotnet-runtime-9.0.11-win-x64.zip"
+    },
+    "https://dl.winehq.org/wine/wine-mono/10.3.0/wine-mono-10.3.0-x86.msi": {
+      "etag": "\"1cfcc2a196bb107e70dc3f49572a905a-11\"",
+      "last-modified": "Wed, 15 Oct 2025 20:09:52 GMT",
+      "name": "wine-mono-10.3.0-x86.msi",
+      "sha256": "161gaydxz32np38xz35rh196wq2b58vbw3qxy3yxz50031imrknf",
+      "url": "https://dl.winehq.org/wine/wine-mono/10.3.0/wine-mono-10.3.0-x86.msi"
+    },
     "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso": {
       "etag": "\"2f110800-63e906acdd1cb\"",
       "last-modified": "Fri, 12 Sep 2025 01:17:28 GMT",
