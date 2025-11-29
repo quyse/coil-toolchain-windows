@@ -182,15 +182,15 @@ rec {
     '';
   };
 
-  redist = stdenv.mkDerivation {
-    name = "msvc-redist-${version}";
+  mkRedist = { arch }: stdenv.mkDerivation {
+    name = "msvc-redist-${arch}-${version}";
     nativeBuildInputs = [
       pkgs.jq
     ];
     buildCommand = ''
-      mkdir -p $out/{bin,nix-support}
+      mkdir -p $out/{bin,nix-support} $installer
       MSVC_REDIST_PREFIX=""
-      for i in ${components}/msvc/VC/Redist/MSVC/*/x64
+      for i in ${components}/msvc/VC/Redist/MSVC/*/${arch}
       do
         MSVC_REDIST_PREFIX="$i"
       done
@@ -203,7 +203,17 @@ rec {
       | jq -R . \
       | jq -rs 'sort|"export WINEDLLOVERRIDES=\(join(","))=n,b"' \
       > $out/nix-support/setup-hook
+
+      # installer
+      ln -s "$MSVC_REDIST_PREFIX"/../vc_redist.${arch}.exe $installer/
     '';
+    outputs = ["out" "installer"];
+  };
+  redist_x64 = mkRedist {
+    arch = "x64";
+  };
+  redist_x86 = mkRedist {
+    arch = "x86";
   };
 
   pe-deps = mkCmakePkg {
@@ -283,7 +293,7 @@ rec {
     , reduceDeps ? true
     }: let
       extendedBuildInputs = [
-        redist
+        redist_x64
       ] ++ buildInputs;
     in pkgs.stdenvNoCC.mkDerivation (
     lib.optionalAttrs (name != null) {

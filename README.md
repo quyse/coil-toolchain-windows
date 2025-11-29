@@ -17,7 +17,7 @@ export NIXPKGS_ALLOW_UNFREE=1
 nix build -L --impure --expr 'let
   pkgs = import <nixpkgs> {};
   coil = import ./default.nix {}; # import Coil project
-  inherit (coil.toolchain-windows.msvc {}) mkCmakePkg;
+  inherit (coil.toolchain-windows.msvc) mkCmakePkg;
 in mkCmakePkg {
   inherit (pkgs.sdl3) pname version src meta; # just use source from nixpkgs
   cmakeFlags = [

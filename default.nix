@@ -224,92 +224,118 @@ toolchain-windows = rec {
       };
     });
 
-  initialDisk = { version ? "2025" }: runPackerStep {
-    name = "windows-${version}";
-    iso = windowsInstallIso {
-      inherit version;
-    };
-    extraMount = "work";
-    extraMountOut = false;
-    beforeScript = ''
-      mkdir work
-      ln -s ${writeRegistryFile {
-        name = "initial.reg";
-        keys = {
-          # disable uac
-          # https://docs.microsoft.com/en-us/windows/security/identity-protection/user-account-control/user-account-control-group-policy-and-registry-key-settings
-          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" = {
-            EnableLUA = false;
-            PromptOnSecureDesktop = false;
-            ConsentPromptBehaviorAdmin = 0;
-            EnableVirtualization = false;
-            EnableInstallerDetection = false;
+  windows = mkWindows {};
+  mkWindows = { version ? "2025" }: rec {
+    initialDisk =  runPackerStep {
+      name = "windows-${version}";
+      iso = installIso;
+      extraMount = "work";
+      extraMountOut = false;
+      beforeScript = ''
+        mkdir work
+        ln -s ${writeRegistryFile {
+          name = "initial.reg";
+          keys = {
+            # disable uac
+            # https://docs.microsoft.com/en-us/windows/security/identity-protection/user-account-control/user-account-control-group-policy-and-registry-key-settings
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" = {
+              EnableLUA = false;
+              PromptOnSecureDesktop = false;
+              ConsentPromptBehaviorAdmin = 0;
+              EnableVirtualization = false;
+              EnableInstallerDetection = false;
+            };
+            # disable restore
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore" = {
+              DisableSR = true;
+            };
+            # disable windows update
+            # https://docs.microsoft.com/en-us/windows/deployment/update/waas-wu-settings
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU" = {
+              NoAutoUpdate = true;
+              AUOptions = 1;
+            };
+            # disable screensaver
+            "HKEY_CURRENT_USER\\Control Panel\\Desktop" = {
+              ScreenSaveActive = false;
+            };
           };
-          # disable restore
-          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore" = {
-            DisableSR = true;
-          };
-          # disable windows update
-          # https://docs.microsoft.com/en-us/windows/deployment/update/waas-wu-settings
-          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU" = {
-            NoAutoUpdate = true;
-            AUOptions = 1;
-          };
-          # disable screensaver
-          "HKEY_CURRENT_USER\\Control Panel\\Desktop" = {
-            ScreenSaveActive = false;
-          };
-        };
-      }} work/initial.reg
-      ln -s ${pkgs.fetchurl {
-        inherit (fixeds.fetchurl."https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt") url sha256 name;
-      }} work/microsoft.crt
-    '';
-    provisioners = [
-      {
-        type = "powershell";
-        inline = [
-          # apply registry tweaks
-          ''reg import D:\work\initial.reg''
-          # uninstall defender
-          "Uninstall-WindowsFeature -Name Windows-Defender -Remove"
-          # power options
-          "powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
-          "powercfg /hibernate off"
-          "powercfg /change -monitor-timeout-ac 0"
-          "powercfg /change -monitor-timeout-dc 0"
-          # install recent Microsoft root code signing certificate required for some software
-          # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
-          ''Import-Certificate -FilePath D:\work\microsoft.crt -CertStoreLocation Cert:\LocalMachine\Root''
-          # confirm Secure Boot
-          ''Confirm-SecureBootUEFI''
-        ];
-      }
-      {
-        type = "windows-restart";
-      }
-    ];
-    meta = {
-      license = lib.licenses.unfree;
-    };
-  };
-
-  windowsInstallIso = { version }: {
-    iso = pkgs.fetchurl {
-      inherit (fixeds.fetchurl."${{
-        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2019
-        "2019" = "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US";
-        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2022
-        "2022" = "https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x409&culture=en-us&country=US";
-        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2025
-        "2025" = "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us";
-      }."${version}"}") url sha256 name;
+        }} work/initial.reg
+        ln -s ${pkgs.fetchurl {
+          inherit (fixeds.fetchurl."https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt") url sha256 name;
+        }} work/microsoft.crt
+      '';
+      provisioners = [
+        {
+          type = "powershell";
+          inline = [
+            # apply registry tweaks
+            ''reg import D:\work\initial.reg''
+            # uninstall defender
+            "Uninstall-WindowsFeature -Name Windows-Defender -Remove"
+            # power options
+            "powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+            "powercfg /hibernate off"
+            "powercfg /change -monitor-timeout-ac 0"
+            "powercfg /change -monitor-timeout-dc 0"
+            # install recent Microsoft root code signing certificate required for some software
+            # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
+            ''Import-Certificate -FilePath D:\work\microsoft.crt -CertStoreLocation Cert:\LocalMachine\Root''
+            # confirm Secure Boot
+            ''Confirm-SecureBootUEFI''
+          ];
+        }
+        {
+          type = "windows-restart";
+        }
+      ];
       meta = {
         license = lib.licenses.unfree;
       };
     };
-    checksum = "none";
-    autounattend = ./autounattend + "/${version}.xml";
+
+    installIso = {
+      iso = pkgs.fetchurl {
+        inherit (fixeds.fetchurl."${{
+          # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2019
+          "2019" = "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US";
+          # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2022
+          "2022" = "https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x409&culture=en-us&country=US";
+          # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2025
+          "2025" = "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us";
+        }."${version}"}") url sha256 name;
+        meta = {
+          license = lib.licenses.unfree;
+        };
+      };
+      checksum = "none";
+      autounattend = ./autounattend + "/${version}.xml";
+    };
+
+    initialDiskPlus = runPackerStep {
+      name = "windows-plus-${version}";
+      disk = initialDisk;
+      extraMount = "work";
+      extraMountOut = false;
+      beforeScript = ''
+        mkdir work
+        ln -s \
+          ${msvc.redist_x64.installer}/vc_redist.x64.exe \
+          ${msvc.redist_x86.installer}/vc_redist.x86.exe \
+          work/
+        ln -s ${dotnet} work/dotnet
+      '';
+      provisioners = [
+        {
+          type = "windows-shell";
+          inline = [''
+            D:\work\vc_redist.x64.exe /install /quiet /norestart
+            D:\work\vc_redist.x86.exe /install /quiet /norestart
+            xcopy D:\work\dotnet "C:\Program Files\dotnet" /s /i /y /q
+          ''];
+        }
+      ];
+    };
   };
 
   # generate .reg file given a list of actions
@@ -404,12 +430,13 @@ toolchain-windows = rec {
     '';
   };
 
-  msvc = import ./msvc.nix {
+  msvc = mkMsvc {};
+  mkMsvc = import ./msvc.nix {
     inherit pkgs fixeds;
     inherit (coil) toolchain-windows toolchain-msvs;
   };
 
-  mkDotnet = version: pkgs.stdenvNoCC.mkDerivation {
+  mkDotnet = { version }: pkgs.stdenvNoCC.mkDerivation {
     pname = "dotnet";
     inherit version;
     nativeBuildInputs = [
@@ -423,17 +450,30 @@ toolchain-windows = rec {
     '';
     meta.license = lib.licenses.mit;
   };
-  dotnet8 = mkDotnet "8.0";
-  dotnet9 = mkDotnet "9.0";
-  dotnet10 = mkDotnet "10.0";
+  dotnet10 = mkDotnet {
+    version = "10.0";
+  };
+  dotnet9 = mkDotnet {
+    version = "9.0";
+  };
+  dotnet8 = mkDotnet {
+    version = "8.0";
+  };
+
+  dotnet = pkgs.symlinkJoin {
+    name = "dotnet";
+    paths = [
+      dotnet10
+      dotnet9
+      dotnet8
+    ];
+  };
 
   touch = {
-    initialDisk = initialDisk {};
+    inherit (windows) initialDiskPlus;
     inherit makemsix;
-
-    inherit (msvc {}) get-clang-version;
-
-    inherit dotnet8 dotnet9 dotnet10;
+    inherit (msvc) get-clang-version;
+    inherit dotnet;
 
     autoUpdateScript = coil.toolchain.autoUpdateFixedsScript fixedsFile;
   };
