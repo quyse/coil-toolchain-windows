@@ -377,7 +377,7 @@ toolchain-windows = rec {
   '';
 
   installWineMono = let
-    version = "10.3.0";
+    version = "10.4.0";
   in ''
     echo -n 'Installing Wine Mono... ' >&2
     msiexec /qn /i ${pkgs.fetchurl {
