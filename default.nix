@@ -40,8 +40,8 @@ toolchain-windows = rec {
     }: let
     guestfishCmd = ''
       ${libguestfs}/bin/guestfish \
-        disk-create extraMount.img qcow2 ${extraMountSize} : \
-        add extraMount.img format:qcow2 label:extraMount : \
+        disk-create extraMount.qcow2 qcow2 ${extraMountSize} : \
+        add extraMount.qcow2 format:qcow2 label:extraMount : \
         run : \
         part-disk /dev/disk/guestfs/extraMount mbr : \
         part-set-mbr-id /dev/disk/guestfs/extraMount 1 07 : \
@@ -84,19 +84,19 @@ toolchain-windows = rec {
         name = "${name}.template.json";
         inherit memory iso extraIso provisioners headless debug;
         disk = if disk != null then "${disk}/image.qcow2" else null;
-        extraDisk = "extraMount.img";
+        extraDisk = "extraMount.qcow2";
       }}
       ${lib.optionalString (extraMount != null && extraMountOut) ''
         echo 'Copying extra mount data out...'
         mkdir ${extraMountArg}
         ${libguestfs}/bin/guestfish \
-          add extraMount.img format:qcow2 label:extraMount readonly:true : \
+          add extraMount.qcow2 format:qcow2 label:extraMount readonly:true : \
           run : \
           mount-ro /dev/disk/guestfs/extraMount1 / : \
           tar-out /${extraMountArg} - | tar -C ${extraMountArg} -vxf -
       ''}
       echo 'Clearing extra mount...'
-      rm extraMount.img
+      rm extraMount.qcow2
       echo 'Executing afterScript...'
       ${afterScript}
     '';
@@ -134,7 +134,7 @@ toolchain-windows = rec {
           cpus = "{{ user `cpus` }}";
           inherit memory headless output_directory;
           skip_compaction = true;
-          # username and password are fixed in bento's autounattend
+          # username and password are fixed in autounattend.xml
           winrm_username = "vagrant";
           winrm_password = "vagrant";
           winrm_timeout = "30m";
@@ -144,13 +144,13 @@ toolchain-windows = rec {
             # https://www.qemu.org/docs/master/system/i386/hyperv.html
             [ "-cpu" "host,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,hv_vpindex,hv_runtime,hv_time,hv_synic,hv_stimer,hv_tlbflush,hv_ipi,hv_frequencies" ]
             [ "-machine" "type=q35,accel=kvm" ]
-            # ACHI for hdds
-            [ "-device" "ahci,id=ahci0" ]
+            # virtio-scsi for hdds
+            [ "-device" "virtio-scsi-pci,id=scsi0" ]
             # ACHI for cdroms
             [ "-device" "ahci,id=ahci1" ]
-            # main hdd
+            # main ssd
             [ "-drive" "file=${output_directory}/packer-qemu,if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd0" ]
-            [ "-device" "ide-hd,bus=ahci0.0,drive=drive-hd0,id=hd0,bootindex=0" ]
+            [ "-device" "scsi-hd,bus=scsi0.0,lun=0,drive=drive-hd0,id=hd0,bootindex=0,rotation_rate=1" ]
             # UEFI
             [ "-drive" "if=pflash,format=raw,readonly=on,file=${ovmf}/FV/OVMF_CODE.ms.fd" ]
             [ "-drive" "if=pflash,format=raw,file=VARS.fd" ]
@@ -170,22 +170,19 @@ toolchain-windows = rec {
             [ "-drive" "file=${virtio_win_iso},if=none,format=raw,media=cdrom,id=drive-cd1" ]
             [ "-device" "ide-cd,bus=ahci1.1,drive=drive-cd1,id=cd1,bootindex=2" ]
             # floppy
-            [ "-drive" "file=fat:floppy:${pkgs.runCommand "autounattend-dir" {} ''
-              mkdir $out
-              cp ${iso.autounattend} $out/Autounattend.xml
-            ''},format=raw,readonly=on,if=none,id=floppy0" ]
+            [ "-drive" "file=fat:floppy:${iso.floppy},format=raw,readonly=on,if=none,id=floppy0" ]
             [ "-device" "isa-fdc,id=fdc0" ]
             [ "-device" "floppy,bus=fdc0.0,drive=floppy0" ]
           ] ++
-          # extra hdd
+          # extra ssd
           lib.optionals (extraDisk != null) [
             [ "-drive" "file=${extraDisk},if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd1" ]
-            [ "-device" "ide-hd,bus=ahci0.1,drive=drive-hd1,id=hd1,bootindex=3" ]
+            [ "-device" "scsi-hd,bus=scsi0.0,lun=1,drive=drive-hd1,id=hd1,bootindex=3,rotation_rate=1" ]
           ] ++
           # extra iso
           lib.optionals (extraIso != null) [
             [ "-drive" "file=${extraIso},if=none,format=raw,media=cdrom,id=drive-cd2" ]
-            [ "-device" "ide-cd,bus=ahci0.2,drive=drive-cd2,id=cd2,bootindex=4" ]
+            [ "-device" "scsi-cd,bus=scsi0.0,lun=2,drive=drive-cd2,id=cd2,bootindex=4" ]
           ];
           # fixed VNC port for easier debugging
           vnc_port_min = 5900;
@@ -206,15 +203,7 @@ toolchain-windows = rec {
           boot_wait = "1s";
         } else {})
       )];
-      provisioners =
-        lib.optional (extraDisk != null) {
-          type = "powershell";
-          inline = [
-            "Set-Disk -Number 1 -IsOffline $False"
-            "Set-Disk -Number 1 -IsReadOnly $False"
-          ];
-        } ++
-        provisioners;
+      inherit provisioners;
       variables = {
         cpus = toString(cpus);
       };
@@ -225,62 +214,7 @@ toolchain-windows = rec {
     initialDisk =  runPackerStep {
       name = "windows-${version}";
       iso = installIso;
-      extraMount = "work";
-      extraMountOut = false;
-      beforeScript = ''
-        mkdir work
-        ln -s ${writeRegistryFile {
-          name = "initial.reg";
-          keys = {
-            # disable uac
-            # https://docs.microsoft.com/en-us/windows/security/identity-protection/user-account-control/user-account-control-group-policy-and-registry-key-settings
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" = {
-              EnableLUA = false;
-              PromptOnSecureDesktop = false;
-              ConsentPromptBehaviorAdmin = 0;
-              EnableVirtualization = false;
-              EnableInstallerDetection = false;
-            };
-            # disable restore
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore" = {
-              DisableSR = true;
-            };
-            # disable windows update
-            # https://docs.microsoft.com/en-us/windows/deployment/update/waas-wu-settings
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU" = {
-              NoAutoUpdate = true;
-              AUOptions = 1;
-            };
-            # disable screensaver
-            "HKEY_CURRENT_USER\\Control Panel\\Desktop" = {
-              ScreenSaveActive = false;
-            };
-          };
-        }} work/initial.reg
-        ln -s ${pkgs.fetchurl {
-          inherit (fixeds.fetchurl."https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt") url sha256 name;
-        }} work/microsoft.crt
-      '';
       provisioners = [
-        {
-          type = "powershell";
-          inline = [
-            # apply registry tweaks
-            ''reg import D:\work\initial.reg''
-            # uninstall defender
-            "Uninstall-WindowsFeature -Name Windows-Defender -Remove"
-            # power options
-            "powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
-            "powercfg /hibernate off"
-            "powercfg /change -monitor-timeout-ac 0"
-            "powercfg /change -monitor-timeout-dc 0"
-            # install recent Microsoft root code signing certificate required for some software
-            # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
-            ''Import-Certificate -FilePath D:\work\microsoft.crt -CertStoreLocation Cert:\LocalMachine\Root''
-            # confirm Secure Boot
-            ''Confirm-SecureBootUEFI''
-          ];
-        }
         {
           type = "windows-restart";
         }
@@ -305,7 +239,89 @@ toolchain-windows = rec {
         };
       };
       checksum = "none";
-      autounattend = ./autounattend + "/${version}.xml";
+      inherit autounattend;
+      floppy = let
+        writeLines = name: lines: pkgs.writeText name (lib.concatMapStrings (line: ''
+          ${line}
+        '') lines);
+      in pkgs.runCommand "windows-${version}-autounattend-floppy" {} ''
+        mkdir $out
+        cp ${autounattend} $out/Autounattend.xml
+
+        cp ${writeRegistryFile {
+          name = "windows-${version}-specialize.reg";
+          keys = {
+            # enable long paths
+            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\FileSystem".LongPathsEnabled = true;
+            # disable uac
+            # https://docs.microsoft.com/en-us/windows/security/identity-protection/user-account-control/user-account-control-group-policy-and-registry-key-settings
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" = {
+              EnableLUA = false;
+              PromptOnSecureDesktop = false;
+              ConsentPromptBehaviorAdmin = 0;
+              EnableVirtualization = false;
+              EnableInstallerDetection = false;
+            };
+            # disable system restore
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore".DisableSR = true;
+            # disable windows update
+            # https://docs.microsoft.com/en-us/windows/deployment/update/waas-wu-settings
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU" = {
+              NoAutoUpdate = true;
+              AUOptions = 1;
+            };
+            # disable windows defender
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender".DisableAntiSpyware = true;
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection".DisableRealtimeMonitoring = true;
+            # disable hibernation and fast startup
+            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power" = {
+              HibernateEnabled = false;
+              HiberbootEnabled = false;
+            };
+            # disable screensaver
+            "HKEY_USERS\\DefaultUser\\Control Panel\\Desktop" = {
+              ScreenSaveActive = false;
+            };
+            # set explorer options
+            "HKEY_USERS\\DefaultUser\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" = {
+              # show file extensions
+              HideFileExt = false;
+              # show hidden files
+              Hidden = 1;
+            };
+          };
+        }} $out/specialize.reg
+
+        cp ${writeLines "windows-${version}-specialize.ps1" [
+          # disable filesystem access time
+          ''fsutil behavior set disablelastaccess 1''
+          # move pagefile to D:
+          ''(Get-WmiObject -Query "select * from Win32_PageFileSetting").delete()''
+          ''Set-WMIInstance -Class Win32_PageFileSetting -Arguments @{Name="D:\pagefile.sys"; MaximumSize=0}''
+          # uninstall defender
+          ''Uninstall-WindowsFeature -Name Windows-Defender -Remove''
+          # disable Windows Search
+          ''sc config WSearch start= disabled''
+          # power options
+          ''powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c''
+          ''powercfg /hibernate off''
+          ''powercfg /change -monitor-timeout-ac 0''
+          ''powercfg /change -monitor-timeout-dc 0''
+          # confirm Secure Boot
+          ''Confirm-SecureBootUEFI''
+          # apply registry tweaks
+          ''reg load "HKU\DefaultUser" "C:\Users\Default\NTUSER.DAT"''
+          ''reg import "A:\specialize.reg"''
+          ''reg unload "HKU\DefaultUser"''
+          # install recent Microsoft root code signing certificate required for some software
+          # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
+          ''Import-Certificate -FilePath "A:\microsoft.crt" -CertStoreLocation "Cert:\LocalMachine\Root"''
+        ]} $out/specialize.ps1
+
+        cp ${pkgs.fetchurl {
+          inherit (fixeds.fetchurl."https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt") url sha256 name;
+        }} $out/microsoft.crt
+      '';
     };
 
     initialDiskPlus = runPackerStep {
@@ -332,6 +348,294 @@ toolchain-windows = rec {
         }
       ];
     };
+
+    autounattend = mkAutounattend {
+      virtioSubpath = {
+        "2019" = "2k19";
+        "2022" = "2k22";
+        "2025" = "2k25";
+      }."${version}";
+      virtioDriversDuringSetup = [
+        "Balloon"
+        "NetKVM"
+        "pvpanic"
+        "qemupciserial"
+        "qxldod"
+        "vioinput"
+        "viorng"
+        "vioscsi"
+        "vioserial"
+        "viostor"
+      ];
+      virtioDrivers = [
+        "Balloon"
+        "fwcfg"
+        "NetKVM"
+        "pvpanic"
+        "qemufwcfg"
+        "qemupciserial"
+        "qxl"
+        "qxldod"
+        "smbus"
+        "sriov"
+        "viofs"
+        "viogpudo"
+        "vioinput"
+        "viomem"
+        "viorng"
+        "vioscsi"
+        "vioserial"
+        "viostor"
+      ];
+    };
+    mkAutounattend = { virtioSubpath, virtioDriversDuringSetup, virtioDrivers }: let
+      # driver paths for Microsoft-Windows-PnpCustomizations{,Non}WinPE components
+      mkPnpCustomizations = drivers: {
+        DriverPaths.PathAndCredentials = lib.pipe drivers [
+          (map (driver: lib.nameValuePair driver {
+            Path = ''E:\${driver}\${virtioSubpath}\amd64'';
+          }))
+          lib.listToAttrs
+          keyedSet
+        ];
+      };
+      keyedSet = lib.mapAttrsToList (key: value: value // {
+        "@wcm:action" = "add";
+        "@wcm:keyValue" = key;
+      });
+      orderedList = lib.imap0 (i: value: value // {
+        "@wcm:action" = "add";
+        Order = i + 1;
+      });
+    in mkAutounattendInternal {
+      windowsPE = {
+        # drivers necessary during setup
+        Microsoft-Windows-PnpCustomizationsWinPE = mkPnpCustomizations virtioDriversDuringSetup;
+        # locales
+        Microsoft-Windows-International-Core-WinPE = {
+          SetupUILanguage.UILanguage = "en-US";
+          InputLocale = "en-US";
+          SystemLocale = "en-US";
+          UILanguage = "en-US";
+          UILanguageFallback = "en-US";
+          UserLocale = "en-US";
+        };
+        # disk partitions
+        Microsoft-Windows-Setup = {
+          DiskConfiguration.Disk = {
+            "@wcm:action" = "add";
+            CreatePartitions.CreatePartition = orderedList [
+              {
+                Type = "EFI";
+                Size = 256;
+              }
+              {
+                Type = "MSR";
+                Size = 128;
+              }
+              {
+                Type = "Primary";
+                Extend = true;
+              }
+            ];
+            ModifyPartitions.ModifyPartition = orderedList [
+              {
+                Format = "FAT32";
+                Label = "EFI";
+                PartitionID = 1;
+              }
+              {
+                Format = "NTFS";
+                Label = "Windows";
+                Letter = "C";
+                PartitionID = 3;
+              }
+            ];
+            DiskID = 0;
+            WillWipeDisk = true;
+          };
+          ImageInstall.OSImage = {
+            Compact = true;
+            InstallFrom.MetaData = {
+              "@wcm:action" = "add";
+              Key = "/IMAGE/NAME";
+              Value = "Windows Server ${version} SERVERSTANDARD";
+            };
+            InstallTo = {
+              DiskID = 0;
+              PartitionID = 3;
+            };
+          };
+          UserData = {
+            AcceptEula = true;
+            FullName = "Vagrant";
+            Organization = "Bento by Progress Chef";
+          };
+          DynamicUpdate.Enable = false;
+        };
+      };
+      offlineServicing = {
+        # automount all storage
+        Microsoft-Windows-PartitionManager.SanPolicy = 1;
+        # drivers to install
+        Microsoft-Windows-PnpCustomizationsNonWinPE = mkPnpCustomizations virtioDrivers;
+        # disable UAC
+        Microsoft-Windows-LUA-Settings.EnableLUA = false;
+        # disable BitLocker encryption
+        Microsoft-Windows-SecureStartup-FilterDriver.PreventDeviceEncryption = true;
+      };
+      specialize = {
+        Microsoft-Windows-Deployment.RunSynchronous.RunSynchronousCommand = orderedList (map (command: {
+          Path = command;
+        }) [
+          ''powershell -File A:\specialize.ps1''
+        ]);
+        Microsoft-Windows-ServerManager-SvrMgrNc.DoNotOpenServerManagerAtLogon = true;
+        # disable IE hardened configuration
+        Microsoft-Windows-IE-ESC = {
+          IEHardenAdmin = false;
+          IEHardenUser = false;
+        };
+        # disable System Restore
+        Microsoft-Windows-SystemRestore-Main.DisableSR = true;
+        Microsoft-Windows-SystemSettingsThreshold.DisplayNetworkSelection = false;
+        # firewall settings
+        Networking-MPSSVC-Svc.FirewallGroups.FirewallGroup = keyedSet {
+          WindowsRemoteManagement = {
+            Active = true;
+            Group = "Windows Remote Management";
+            Profile = "all";
+          };
+          RemoteAdministration = {
+            Active = true;
+            Group = "Remote Administration";
+            Profile = "all";
+          };
+        };
+        # do not participate in customer experience improvement program
+        Microsoft-Windows-SQMApi.CEIPEnabled = 0;
+        # disable auto activation
+        Microsoft-Windows-Security-SPP-UX.SkipAutoActivation = true;
+      };
+      oobeSystem = {
+        # locales
+        Microsoft-Windows-International-Core = {
+          InputLocale = "en-US";
+          SystemLocale = "en-US";
+          UILanguage = "en-US";
+          UserLocale = "en-US";
+        };
+        Microsoft-Windows-Shell-Setup = {
+          # disable OOBE crap
+          OOBE = {
+            HideEULAPage = true;
+            HideLocalAccountScreen = true;
+            HideOEMRegistrationScreen = true;
+            HideOnlineAccountScreens = true;
+            HideWirelessSetupInOOBE = true;
+            NetworkLocation = "Work";
+            ProtectYourPC = 3;
+            SkipMachineOOBE = true;
+            SkipUserOOBE = true;
+            VMModeOptimizations = {
+              SkipAdministratorProfileRemoval = true;
+              SkipNotifyUILanguageChange = true;
+              SkipWinREInitialization = true;
+            };
+          };
+          TimeZone = "UTC";
+          # user accounts
+          UserAccounts = {
+            AdministratorPassword = {
+              Value = "vagrant";
+              PlainText = true;
+            };
+            LocalAccounts.LocalAccount = {
+              "@wcm:action" = "add";
+              Password = {
+                Value = "vagrant";
+                PlainText = true;
+              };
+              Description = "Vagrant User";
+              DisplayName = "vagrant";
+              Group = "administrators";
+              Name = "vagrant";
+            };
+          };
+          AutoLogon = {
+            Password = {
+              Value = "vagrant";
+              PlainText = true;
+            };
+            Username = "vagrant";
+            Enabled = true;
+          };
+          FirstLogonCommands.SynchronousCommand = orderedList (map (command: {
+            CommandLine = command;
+          }) [
+            # Set Execution Policy 64 Bit
+            ''%windir%\System32\WindowsPowerShell\v1.0\powershell.exe -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force"''
+            # Set Execution Policy 32 Bit
+            ''%windir%\SysWOW64\cmd.exe /c powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force"''
+            # Sets detected network connections to private to allow start of winrm
+            ''%windir%\System32\WindowsPowerShell\v1.0\powershell.exe -Command Get-NetConnectionProfile | Set-NetConnectionProfile -NetworkCategory "Private"''
+            # Allows winrm over public profile interfaces
+            ''%windir%\System32\WindowsPowerShell\v1.0\powershell.exe -Command Set-NetFirewallRule -Name "WINRM-HTTP-In-TCP" -RemoteAddress Any''
+            # winrm quickconfig -q
+            ''%windir%\System32\cmd.exe /c winrm quickconfig -q''
+            # winrm quickconfig -transport:http
+            ''%windir%\System32\cmd.exe /c winrm quickconfig -transport:http''
+            # Win RM MaxTimoutms
+            ''%windir%\System32\cmd.exe /c winrm set winrm/config @{MaxTimeoutms="1800000"}''
+            # Win RM MaxMemoryPerShellMB
+            ''%windir%\System32\cmd.exe /c winrm set winrm/config/winrs @{MaxMemoryPerShellMB="2048"}''
+            # Win RM AllowUnencrypted
+            ''%windir%\System32\cmd.exe /c winrm set winrm/config/service @{AllowUnencrypted="true"}''
+            # Win RM auth Basic
+            ''%windir%\System32\cmd.exe /c winrm set winrm/config/service/auth @{Basic="true"}''
+            # Win RM client auth Basic
+            ''%windir%\System32\cmd.exe /c winrm set winrm/config/client/auth @{Basic="true"}''
+            # Win RM listener Address/Port
+            ''%windir%\System32\cmd.exe /c winrm set winrm/config/listener?Address=*+Transport=HTTP @{Port="5985"}''
+            # Win RM port open
+            ''%windir%\System32\cmd.exe /c netsh firewall add portopening TCP 5985 "Port 5985"''
+            # Stop Win RM Service
+            ''%windir%\System32\cmd.exe /c net stop winrm''
+            # Win RM Autostart
+            ''%windir%\System32\cmd.exe /c sc config winrm start= auto''
+            # Start Win RM Service
+            ''%windir%\System32\cmd.exe /c net start winrm''
+          ]);
+        };
+        # remove Windows Recovery Environment
+        Microsoft-Windows-WinRE-RecoveryAgent.UninstallWindowsRE = true;
+      };
+    };
+    # make autounattend.xml from a two-level map (pass => component => ...)
+    mkAutounattendInternal = passesComponents: pkgs.runCommand "autounattend-${version}.xml" {
+      nativeBuildInputs = [
+        pkgs.yq
+      ];
+    } ''
+      echo '<?xml version="1.0" encoding="utf-8"?>' > $out
+      yq -Sx . < ${pkgs.writeText "autounattend-${version}.json" (builtins.toJSON {
+        unattend = {
+          "@xmlns" = "urn:schemas-microsoft-com:unattend";
+          "@xmlns:wcm" = "http://schemas.microsoft.com/WMIConfig/2002/State";
+          "@xmlns:xsi" = "http://www.w3.org/2001/XMLSchema-instance";
+          settings = lib.mapAttrsToList (pass: passDesc: {
+            "@pass" = pass;
+            component = lib.mapAttrsToList (component: componentDesc: componentDesc // {
+              "@name" = component;
+              "@processorArchitecture" = "amd64";
+              "@publicKeyToken" = "31bf3856ad364e35";
+              "@language" = "neutral";
+              "@versionScope" = "nonSxS";
+            }) passDesc;
+          }) passesComponents;
+        };
+      })} >> $out
+    '';
   };
 
   # generate .reg file given a list of actions
