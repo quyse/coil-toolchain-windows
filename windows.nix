@@ -15,6 +15,7 @@ rec {
     { name
     , memory ? 4096
     , disk ? null # set to the previous step, null for initial step
+    , diskSize ? "256G"
     , iso ? null
     , provisioners
     , extraMount ? null # path to mount (actually copy) into VM as drive D:
@@ -56,6 +57,8 @@ rec {
         pkgs.socat
       ];
       requiredSystemFeatures = ["kvm"];
+      PACKER_LOG = if debug then 1 else 0;
+      CHECKPOINT_DISABLE = 1;
     }
     // lib.optionalAttrs (outputHash != null) {
       inherit outputHash outputHashAlgo;
@@ -99,47 +102,14 @@ rec {
     then
       cp --no-preserve=mode ${if disk != null then "${disk}/VARS.fd" else "${ovmf}/FV/OVMF_VARS.ms.fd"} ./VARS.fd
     fi
-    ${lib.optionalString debug "PACKER_LOG=1"} CHECKPOINT_DISABLE=1 packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
-      name = "${name}.template.json";
-      inherit memory iso extraIso provisioners headless debug;
-      disk = if disk != null then "${disk}/image.qcow2" else null;
-      extraDisk = "extraMount.qcow2";
-    }}
-    ${lib.optionalString (extraMount != null && extraMountOut) ''
-      echo 'Copying extra mount data out...'
-      mkdir ${extraMountArg}
-      guestfish \
-        add extraMount.qcow2 format:qcow2 label:extraMount readonly:true : \
-        run : \
-        mount-ro /dev/disk/guestfs/extraMount1 / : \
-        tar-out /${extraMountArg} - | tar -C ${extraMountArg} -vxf -
-    ''}
-    echo 'Clearing extra mount...'
-    rm extraMount.qcow2
-    echo 'Executing afterScript...'
-    ${afterScript}
-  '';
-
-  packerTemplateJson =
-    { name
-    , cpus ? 1
-    , memory ? 4096
-    , disk ? null
-    , disk_size ? "256G"
-    , iso ? null
-    , extraIso ? null
-    , output_directory ? "build"
-    , provisioners
-    , extraDisk ? null
-    , headless ? true
-    , debug ? false
-    }: pkgs.writeText name (builtins.toJSON {
+    packer build --var cores="$NIX_BUILD_CORES" ${pkgs.writeText "${name}.template.json" (builtins.toJSON {
       builders = [(
         {
           type = "qemu";
           communicator = "winrm";
-          cpus = "{{ user `cpus` }}";
-          inherit memory headless output_directory;
+          cores = "{{ user `cores` }}";
+          inherit memory headless;
+          output_directory = "build";
           skip_compaction = true;
           # username and password are fixed in autounattend.xml
           winrm_username = "vagrant";
@@ -156,8 +126,11 @@ rec {
             # ACHI for cdroms
             [ "-device" "ahci,id=ahci1" ]
             # main ssd
-            [ "-drive" "file=${output_directory}/packer-qemu,if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd0" ]
+            [ "-drive" "file=build/packer-qemu,if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd0" ]
             [ "-device" "scsi-hd,bus=scsi0.0,lun=0,drive=drive-hd0,id=hd0,bootindex=0,rotation_rate=1" ]
+            # extra ssd
+            [ "-drive" "file=extraMount.qcow2,if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd1" ]
+            [ "-device" "scsi-hd,bus=scsi0.0,lun=1,drive=drive-hd1,id=hd1,bootindex=3,rotation_rate=1" ]
             # UEFI
             [ "-drive" "if=pflash,format=raw,readonly=on,file=${ovmf}/FV/OVMF_CODE.ms.fd" ]
             [ "-drive" "if=pflash,format=raw,file=VARS.fd" ]
@@ -181,11 +154,6 @@ rec {
             [ "-device" "isa-fdc,id=fdc0" ]
             [ "-device" "floppy,bus=fdc0.0,drive=floppy0" ]
           ] ++
-          # extra ssd
-          lib.optionals (extraDisk != null) [
-            [ "-drive" "file=${extraDisk},if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd1" ]
-            [ "-device" "scsi-hd,bus=scsi0.0,lun=1,drive=drive-hd1,id=hd1,bootindex=3,rotation_rate=1" ]
-          ] ++
           # extra iso
           lib.optionals (extraIso != null) [
             [ "-drive" "file=${extraIso},if=none,format=raw,media=cdrom,id=drive-cd2" ]
@@ -196,14 +164,14 @@ rec {
           vnc_port_max = 5900;
         }
         // (if disk != null then {
-          inherit disk_size;
+          disk_size = diskSize;
           disk_image = true;
           use_backing_file = true;
-          iso_url = disk;
+          iso_url = "${disk}/image.qcow2";
           iso_checksum = "none";
           skip_resize_disk = true;
         } else if iso != null then {
-          inherit disk_size;
+          disk_size = diskSize;
           iso_url = iso.iso;
           iso_checksum = iso.checksum;
           boot_command = ["<enter><wait><enter><wait><enter>"]; # "press any key to boot from cd"
@@ -211,10 +179,21 @@ rec {
         } else {})
       )];
       inherit provisioners;
-      variables = {
-        cpus = toString(cpus);
-      };
-    });
+    })}
+    ${lib.optionalString (extraMount != null && extraMountOut) ''
+      echo 'Copying extra mount data out...'
+      mkdir ${extraMountArg}
+      guestfish \
+        add extraMount.qcow2 format:qcow2 label:extraMount readonly:true : \
+        run : \
+        mount-ro /dev/disk/guestfs/extraMount1 / : \
+        tar-out /${extraMountArg} - | tar -C ${extraMountArg} -vxf -
+    ''}
+    echo 'Clearing extra mount...'
+    rm extraMount.qcow2
+    echo 'Executing afterScript...'
+    ${afterScript}
+  '';
 
   mkWindows = { version ? "2025" }: rec {
     initialDisk =  runPackerStep {
