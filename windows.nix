@@ -36,7 +36,7 @@ rec {
     , debug ? false
     }: let
     guestfishCmd = ''
-      ${libguestfs}/bin/guestfish \
+      guestfish \
         disk-create extraMount.qcow2 qcow2 ${extraMountSize} : \
         add extraMount.qcow2 format:qcow2 label:extraMount : \
         run : \
@@ -46,6 +46,15 @@ rec {
     extraMountArg = lib.escapeShellArg extraMount;
   in pkgs.runCommand name (
     {
+      nativeBuildInputs = [
+        qemu
+        libguestfs
+        packer
+        swtpm
+      ]
+      ++ lib.optionals debug [
+        pkgs.socat
+      ];
       requiredSystemFeatures = ["kvm"];
     }
     // lib.optionalAttrs (outputHash != null) {
@@ -74,7 +83,7 @@ rec {
     ''}
     ${lib.optionalString debug ''
       echo 'Starting socat proxying VNC as Unix socket...'
-      ${pkgs.socat}/bin/socat unix-listen:vnc.socket,fork tcp-connect:127.0.0.1:5900 &
+      socat unix-listen:vnc.socket,fork tcp-connect:127.0.0.1:5900 &
     ''}
     echo 'Starting swtpm...'
     if [ ! -d tpm ]
@@ -84,13 +93,13 @@ rec {
         else "mkdir tpm"
       }
     fi
-    ${swtpm}/bin/swtpm socket --tpm2 --tpmstate dir=tpm --ctrl type=unixio,path=tpm.sock --daemon --terminate
+    swtpm socket --tpm2 --tpmstate dir=tpm --ctrl type=unixio,path=tpm.sock --daemon --terminate
     echo 'Starting VM...'
     if [ ! -f VARS.fd ]
     then
       cp --no-preserve=mode ${if disk != null then "${disk}/VARS.fd" else "${ovmf}/FV/OVMF_VARS.ms.fd"} ./VARS.fd
     fi
-    PATH=${qemu}/bin:$PATH ${lib.optionalString debug "PACKER_LOG=1"} CHECKPOINT_DISABLE=1 ${packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
+    ${lib.optionalString debug "PACKER_LOG=1"} CHECKPOINT_DISABLE=1 packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
       name = "${name}.template.json";
       inherit memory iso extraIso provisioners headless debug;
       disk = if disk != null then "${disk}/image.qcow2" else null;
@@ -99,7 +108,7 @@ rec {
     ${lib.optionalString (extraMount != null && extraMountOut) ''
       echo 'Copying extra mount data out...'
       mkdir ${extraMountArg}
-      ${libguestfs}/bin/guestfish \
+      guestfish \
         add extraMount.qcow2 format:qcow2 label:extraMount readonly:true : \
         run : \
         mount-ro /dev/disk/guestfs/extraMount1 / : \
