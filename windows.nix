@@ -30,7 +30,6 @@ rec {
       ''
     , outputHash ? null
     , outputHashAlgo ? "sha256"
-    , run ? true # set to false to return generated script instead of actually running it
     , headless ? true # set to false to run VM with UI for debugging
     , meta ? null
     , impure ? false
@@ -45,71 +44,72 @@ rec {
         part-set-mbr-id /dev/disk/guestfs/extraMount 1 07 : \
         mkfs ntfs /dev/disk/guestfs/extraMount1'';
     extraMountArg = lib.escapeShellArg extraMount;
-    script = ''
-      export HOME="$(mktemp -d)" # fix guestfish warning
-      echo 'Executing beforeScript...'
-      ${beforeScript}
-      ${if extraMount != null && extraMountIn then ''
-        echo 'Copying extra mount data in...'
-        tar -C ${extraMountArg} -c --dereference . | ${guestfishCmd} : \
-          mount /dev/disk/guestfs/extraMount1 / : \
-          mkdir /${extraMountArg} : \
-          tar-in - /${extraMountArg}
-        rm -r ${extraMountArg}
-      '' else ''
-        echo 'Creating extra mount...'
-        ${guestfishCmd}
-      ''}
-      ${lib.optionalString debug ''
-        echo 'Starting socat proxying VNC as Unix socket...'
-        ${pkgs.socat}/bin/socat unix-listen:vnc.socket,fork tcp-connect:127.0.0.1:5900 &
-      ''}
-      echo 'Starting swtpm...'
-      if [ ! -d tpm ]
-      then
-        ${if disk != null
-          then "cp -r --no-preserve=mode ${disk}/tpm tpm"
-          else "mkdir tpm"
-        }
-      fi
-      ${swtpm}/bin/swtpm socket --tpm2 --tpmstate dir=tpm --ctrl type=unixio,path=tpm.sock --daemon --terminate
-      echo 'Starting VM...'
-      if [ ! -f VARS.fd ]
-      then
-        cp --no-preserve=mode ${if disk != null then "${disk}/VARS.fd" else "${ovmf}/FV/OVMF_VARS.ms.fd"} ./VARS.fd
-      fi
-      PATH=${qemu}/bin:$PATH ${lib.optionalString debug "PACKER_LOG=1"} CHECKPOINT_DISABLE=1 ${packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
-        name = "${name}.template.json";
-        inherit memory iso extraIso provisioners headless debug;
-        disk = if disk != null then "${disk}/image.qcow2" else null;
-        extraDisk = "extraMount.qcow2";
-      }}
-      ${lib.optionalString (extraMount != null && extraMountOut) ''
-        echo 'Copying extra mount data out...'
-        mkdir ${extraMountArg}
-        ${libguestfs}/bin/guestfish \
-          add extraMount.qcow2 format:qcow2 label:extraMount readonly:true : \
-          run : \
-          mount-ro /dev/disk/guestfs/extraMount1 / : \
-          tar-out /${extraMountArg} - | tar -C ${extraMountArg} -vxf -
-      ''}
-      echo 'Clearing extra mount...'
-      rm extraMount.qcow2
-      echo 'Executing afterScript...'
-      ${afterScript}
-    '';
-    env = {
+  in pkgs.runCommand name (
+    {
       requiredSystemFeatures = ["kvm"];
-    } // (lib.optionalAttrs (outputHash != null) {
+    }
+    // lib.optionalAttrs (outputHash != null) {
       inherit outputHash outputHashAlgo;
-    })
-    // (lib.optionalAttrs (meta != null) {
+    }
+    // lib.optionalAttrs (meta != null) {
       inherit meta;
-    })
-    // (lib.optionalAttrs impure {
+    }
+    // lib.optionalAttrs impure {
       __impure = true;
-    });
-  in (if run then pkgs.runCommand name env else pkgs.writeScript "${name}.sh") script;
+    }
+  ) ''
+    export HOME="$(mktemp -d)" # fix guestfish warning
+    echo 'Executing beforeScript...'
+    ${beforeScript}
+    ${if extraMount != null && extraMountIn then ''
+      echo 'Copying extra mount data in...'
+      tar -C ${extraMountArg} -c --dereference . | ${guestfishCmd} : \
+        mount /dev/disk/guestfs/extraMount1 / : \
+        mkdir /${extraMountArg} : \
+        tar-in - /${extraMountArg}
+      rm -r ${extraMountArg}
+    '' else ''
+      echo 'Creating extra mount...'
+      ${guestfishCmd}
+    ''}
+    ${lib.optionalString debug ''
+      echo 'Starting socat proxying VNC as Unix socket...'
+      ${pkgs.socat}/bin/socat unix-listen:vnc.socket,fork tcp-connect:127.0.0.1:5900 &
+    ''}
+    echo 'Starting swtpm...'
+    if [ ! -d tpm ]
+    then
+      ${if disk != null
+        then "cp -r --no-preserve=mode ${disk}/tpm tpm"
+        else "mkdir tpm"
+      }
+    fi
+    ${swtpm}/bin/swtpm socket --tpm2 --tpmstate dir=tpm --ctrl type=unixio,path=tpm.sock --daemon --terminate
+    echo 'Starting VM...'
+    if [ ! -f VARS.fd ]
+    then
+      cp --no-preserve=mode ${if disk != null then "${disk}/VARS.fd" else "${ovmf}/FV/OVMF_VARS.ms.fd"} ./VARS.fd
+    fi
+    PATH=${qemu}/bin:$PATH ${lib.optionalString debug "PACKER_LOG=1"} CHECKPOINT_DISABLE=1 ${packer}/bin/packer build --var cpus=$NIX_BUILD_CORES ${packerTemplateJson {
+      name = "${name}.template.json";
+      inherit memory iso extraIso provisioners headless debug;
+      disk = if disk != null then "${disk}/image.qcow2" else null;
+      extraDisk = "extraMount.qcow2";
+    }}
+    ${lib.optionalString (extraMount != null && extraMountOut) ''
+      echo 'Copying extra mount data out...'
+      mkdir ${extraMountArg}
+      ${libguestfs}/bin/guestfish \
+        add extraMount.qcow2 format:qcow2 label:extraMount readonly:true : \
+        run : \
+        mount-ro /dev/disk/guestfs/extraMount1 / : \
+        tar-out /${extraMountArg} - | tar -C ${extraMountArg} -vxf -
+    ''}
+    echo 'Clearing extra mount...'
+    rm extraMount.qcow2
+    echo 'Executing afterScript...'
+    ${afterScript}
+  '';
 
   packerTemplateJson =
     { name
