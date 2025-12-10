@@ -10,13 +10,18 @@
 , fixeds
 }:
 
-rec {
+let
+  writeLines = name: lines: pkgs.writeText name (lib.concatMapStrings (line: ''
+    ${line}
+  '') lines);
+
+in rec {
   runPackerStep =
     { name
     , memory ? 4096
     , disk ? null # set to the previous step, null for initial step
     , diskSize ? "256G"
-    , iso ? null
+    , installIso ? null
     , provisioners
     , extraMount ? null # path to mount (actually copy) into VM as drive D:
     , extraMountIn ? true # whether to copy data into VM
@@ -142,15 +147,15 @@ rec {
             [ "-usb" ] [ "-device" "usb-tablet" ]
           ] ++
           # cdroms and floppy
-          lib.optionals (disk == null && iso != null) [
+          lib.optionals (disk == null && installIso != null) [
             # main cdrom
-            [ "-drive" "file=${iso.iso},if=none,format=raw,media=cdrom,id=drive-cd0" ]
+            [ "-drive" "file=${installIso.iso},if=none,format=raw,media=cdrom,id=drive-cd0" ]
             [ "-device" "ide-cd,bus=ahci1.0,drive=drive-cd0,id=cd0,bootindex=1" ]
             # virtio-win cdrom
             [ "-drive" "file=${virtio_win_iso},if=none,format=raw,media=cdrom,id=drive-cd1" ]
             [ "-device" "ide-cd,bus=ahci1.1,drive=drive-cd1,id=cd1,bootindex=2" ]
             # floppy
-            [ "-drive" "file=fat:floppy:${iso.floppy},format=raw,readonly=on,if=none,id=floppy0" ]
+            [ "-drive" "file=fat:floppy:${installIso.floppy},format=raw,readonly=on,if=none,id=floppy0" ]
             [ "-device" "isa-fdc,id=fdc0" ]
             [ "-device" "floppy,bus=fdc0.0,drive=floppy0" ]
           ] ++
@@ -170,10 +175,10 @@ rec {
           iso_url = "${disk}/image.qcow2";
           iso_checksum = "none";
           skip_resize_disk = true;
-        } else if iso != null then {
+        } else if installIso != null then {
           disk_size = diskSize;
-          iso_url = iso.iso;
-          iso_checksum = iso.checksum;
+          iso_url = installIso.iso;
+          iso_checksum = installIso.checksum;
           boot_command = ["<enter><wait><enter><wait><enter>"]; # "press any key to boot from cd"
           boot_wait = "1s";
         } else {})
@@ -198,7 +203,12 @@ rec {
   mkWindows = { version ? "2025" }: rec {
     initialDisk =  runPackerStep {
       name = "windows-${version}";
-      iso = installIso;
+      inherit installIso;
+      extraMount = "install";
+      extraMountOut = false;
+      beforeScript = ''
+        ln -s ${installIso.mount} install
+      '';
       provisioners = [
         {
           type = "windows-restart";
@@ -224,16 +234,18 @@ rec {
         };
       };
       checksum = "none";
+
       inherit autounattend;
-      floppy = let
-        writeLines = name: lines: pkgs.writeText name (lib.concatMapStrings (line: ''
-          ${line}
-        '') lines);
-      in pkgs.runCommand "windows-${version}-autounattend-floppy" {} ''
+
+      floppy = pkgs.runCommand "windows-${version}-autounattend-floppy" {} ''
         mkdir $out
         cp ${autounattend} $out/Autounattend.xml
+      '';
 
-        cp ${writeRegistryFile {
+      mount = pkgs.runCommand "windows-${version}-autounattend-mount" {} ''
+        mkdir $out
+
+        ln -s ${writeRegistryFile {
           name = "windows-${version}-specialize.reg";
           keys = {
             # enable long paths
@@ -277,7 +289,7 @@ rec {
           };
         }} $out/specialize.reg
 
-        cp ${writeLines "windows-${version}-specialize.ps1" [
+        ln -s ${writeLines "windows-${version}-specialize.ps1" [
           # disable filesystem access time
           ''fsutil behavior set disablelastaccess 1''
           # move pagefile to D:
@@ -296,14 +308,14 @@ rec {
           ''Confirm-SecureBootUEFI''
           # apply registry tweaks
           ''reg load "HKU\DefaultUser" "C:\Users\Default\NTUSER.DAT"''
-          ''reg import "A:\specialize.reg"''
+          ''reg import "D:\install\specialize.reg"''
           ''reg unload "HKU\DefaultUser"''
           # install recent Microsoft root code signing certificate required for some software
           # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
-          ''Import-Certificate -FilePath "A:\microsoft.crt" -CertStoreLocation "Cert:\LocalMachine\Root"''
+          ''Import-Certificate -FilePath "D:\install\microsoft.crt" -CertStoreLocation "Cert:\LocalMachine\Root"''
         ]} $out/specialize.ps1
 
-        cp ${pkgs.fetchurl {
+        ln -s ${pkgs.fetchurl {
           inherit (fixeds.fetchurl."https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt") url sha256 name;
         }} $out/microsoft.crt
       '';
@@ -312,23 +324,23 @@ rec {
     initialDiskPlus = runPackerStep {
       name = "windows-plus-${version}";
       disk = initialDisk;
-      extraMount = "work";
+      extraMount = "install";
       extraMountOut = false;
       beforeScript = ''
-        mkdir work
+        mkdir install
         ln -s \
           ${msvc.redist_x64.installer}/vc_redist.x64.exe \
           ${msvc.redist_x86.installer}/vc_redist.x86.exe \
-          work/
-        ln -s ${dotnet} work/dotnet
+          install/
+        ln -s ${dotnet} install/dotnet
       '';
       provisioners = [
         {
           type = "windows-shell";
           inline = [''
-            D:\work\vc_redist.x64.exe /install /quiet /norestart
-            D:\work\vc_redist.x86.exe /install /quiet /norestart
-            xcopy D:\work\dotnet "C:\Program Files\dotnet" /s /i /y /q
+            D:\install\vc_redist.x64.exe /install /quiet /norestart
+            D:\install\vc_redist.x86.exe /install /quiet /norestart
+            xcopy D:\install\dotnet "C:\Program Files\dotnet" /s /i /y /q
           ''];
         }
       ];
@@ -473,7 +485,7 @@ rec {
         Microsoft-Windows-Deployment.RunSynchronous.RunSynchronousCommand = orderedList (map (command: {
           Path = command;
         }) [
-          ''powershell -File A:\specialize.ps1''
+          ''powershell -File D:\install\specialize.ps1''
         ]);
         Microsoft-Windows-ServerManager-SvrMgrNc.DoNotOpenServerManagerAtLogon = true;
         # disable IE hardened configuration
