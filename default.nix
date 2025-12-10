@@ -44,39 +44,8 @@ toolchain-windows = rec {
   makeWinePaths = paths: lib.concatStringsSep ";" (map (path: "$(winepath -w ${path})") paths);
 
   # makemsix tool
-  makemsix = pkgs.stdenv.mkDerivation rec {
-    name = "makemsix";
-    src = pkgs.fetchgit {
-      inherit (fixeds.fetchgit."https://github.com/microsoft/msix-packaging.git") url rev sha256;
-    };
-    buildInputs = [
-      pkgs.icu
-      pkgs.zlib
-    ];
-    nativeBuildInputs = [
-      pkgs.cmake
-      pkgs.ninja
-      pkgs.clang
-    ];
-    preConfigure = ''
-      # icu headers require at least C++ 17 since v75
-      find . -name CMakeLists.txt -exec sed -iE 's/CMAKE_CXX_STANDARD 14/CMAKE_CXX_STANDARD 17/' {} \;
-    '';
-    cmakeFlags = [
-      "-DCMAKE_CXX_COMPILER=clang++"
-      "-DCMAKE_C_COMPILER=clang"
-      "-DLINUX=ON"
-      "-DMSIX_PACK=ON"
-      "-DUSE_VALIDATION_PARSER=ON"
-      "-DMSIX_SAMPLES=OFF"
-      "-DMSIX_TESTS=OFF"
-    ];
-    installPhase = ''
-      mkdir -p $out/{bin,lib}
-      cp bin/makemsix $out/bin/
-      cp lib/libmsix.so $out/lib/
-      patchelf --set-rpath "${pkgs.lib.makeLibraryPath buildInputs}:$out/lib" $out/bin/*
-    '';
+  makemsix = pkgs.callPackage ./makemsix.nix {
+    inherit fixeds;
   };
 
   msvc = mkMsvc {};
