@@ -22,11 +22,11 @@
   },
   "fetchurl": {
     "https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DE2117CD419357",
-      "last-modified": "Tue, 11 Nov 2025 11:45:24 GMT",
-      "name": "dotnet-runtime-10.0.0-win-x64.zip",
-      "sha256": "19djhwdgcbyrs0aw82vr86453wiprwgkidl74h11jqdakvijbkb2",
-      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.0/dotnet-runtime-10.0.0-win-x64.zip"
+      "etag": "0x8DE375670872D9D",
+      "last-modified": "Tue, 09 Dec 2025 19:09:12 GMT",
+      "name": "dotnet-runtime-10.0.1-win-x64.zip",
+      "sha256": "06lximyq41q2fs9i5nkd8h2ia84ncpg0kicd84bxp2295z4jvcq8",
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.1/dotnet-runtime-10.0.1-win-x64.zip"
     },
     "https://aka.ms/dotnet/8.0/dotnet-runtime-win-x64.zip": {
       "etag": "0x8DE2114F8088F07",
