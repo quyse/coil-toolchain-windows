@@ -21,13 +21,13 @@ in rec {
     , memory ? 4096
     , disk ? null # set to the previous step, null for initial step
     , diskSize ? "256G"
-    , installIso ? null
     , provisioners
     , extraMount ? null # path to mount (actually copy) into VM as drive D:
     , extraMountIn ? true # whether to copy data into VM
     , extraMountOut ? true # whether to copy data out of VM
     , extraMountSize ? "32G"
-    , extraIso ? null
+    , cdromIsos ? []
+    , floppyDirectory ? null
     , beforeScript ? ""
     , afterScript ? ''
         mkdir $out
@@ -135,7 +135,7 @@ in rec {
             [ "-device" "scsi-hd,bus=scsi0.0,lun=0,drive=drive-hd0,id=hd0,bootindex=0,rotation_rate=1" ]
             # extra ssd
             [ "-drive" "file=extraMount.qcow2,if=none,cache=unsafe,discard=unmap,detect-zeroes=unmap,format=qcow2,id=drive-hd1" ]
-            [ "-device" "scsi-hd,bus=scsi0.0,lun=1,drive=drive-hd1,id=hd1,bootindex=3,rotation_rate=1" ]
+            [ "-device" "scsi-hd,bus=scsi0.0,lun=1,drive=drive-hd1,id=hd1,bootindex=1,rotation_rate=1" ]
             # UEFI
             [ "-drive" "if=pflash,format=raw,readonly=on,file=${ovmf}/FV/OVMF_CODE.ms.fd" ]
             [ "-drive" "if=pflash,format=raw,file=VARS.fd" ]
@@ -146,41 +146,33 @@ in rec {
             # better controls for debugging
             [ "-usb" ] [ "-device" "usb-tablet" ]
           ] ++
-          # cdroms and floppy
-          lib.optionals (disk == null && installIso != null) [
-            # main cdrom
-            [ "-drive" "file=${installIso.iso},if=none,format=raw,media=cdrom,id=drive-cd0" ]
-            [ "-device" "ide-cd,bus=ahci1.0,drive=drive-cd0,id=cd0,bootindex=1" ]
-            # virtio-win cdrom
-            [ "-drive" "file=${virtio_win_iso},if=none,format=raw,media=cdrom,id=drive-cd1" ]
-            [ "-device" "ide-cd,bus=ahci1.1,drive=drive-cd1,id=cd1,bootindex=2" ]
-            # floppy
-            [ "-drive" "file=fat:floppy:${installIso.floppy},format=raw,readonly=on,if=none,id=floppy0" ]
+          # cdroms
+          lib.concatLists (lib.imap0 (index: iso: [
+            [ "-drive" "file=${iso},if=none,format=raw,media=cdrom,id=drive-cd${toString index}" ]
+            [ "-device" "ide-cd,bus=ahci1.${toString index},drive=drive-cd${toString index},id=cd${toString index},bootindex=${toString (index + 2)}" ]
+          ]) cdromIsos) ++
+          # floppy
+          lib.optionals (floppyDirectory != null) [
+            [ "-drive" "file=fat:floppy:${floppyDirectory},format=raw,readonly=on,if=none,id=floppy0" ]
             [ "-device" "isa-fdc,id=fdc0" ]
             [ "-device" "floppy,bus=fdc0.0,drive=floppy0" ]
-          ] ++
-          # extra iso
-          lib.optionals (extraIso != null) [
-            [ "-drive" "file=${extraIso},if=none,format=raw,media=cdrom,id=drive-cd2" ]
-            [ "-device" "scsi-cd,bus=scsi0.0,lun=2,drive=drive-cd2,id=cd2,bootindex=4" ]
           ];
           # fixed VNC port for easier debugging
           vnc_port_min = 5900;
           vnc_port_max = 5900;
+          disk_size = diskSize;
+          boot_wait = "1s";
         }
         // (if disk != null then {
-          disk_size = diskSize;
           disk_image = true;
           use_backing_file = true;
           iso_url = "${disk}/image.qcow2";
           iso_checksum = "none";
           skip_resize_disk = true;
-        } else if installIso != null then {
-          disk_size = diskSize;
-          iso_url = installIso.iso;
-          iso_checksum = installIso.checksum;
+        } else if cdromIsos != [] then {
+          iso_url = lib.head cdromIsos;
+          iso_checksum = "none";
           boot_command = ["<enter><wait><enter><wait><enter>"]; # "press any key to boot from cd"
-          boot_wait = "1s";
         } else {})
       )];
       inherit provisioners;
@@ -203,11 +195,15 @@ in rec {
   mkWindows = { version ? "2025" }: rec {
     initialDisk =  runPackerStep {
       name = "windows-${version}";
-      inherit installIso;
-      extraMount = "install";
+      extraMount = "autounattend";
       extraMountOut = false;
+      cdromIsos = [
+        installIso
+        virtio_win_iso
+      ];
+      floppyDirectory = autounattendFloppy;
       beforeScript = ''
-        ln -s ${installIso.mount} install
+        ln -s ${autounattendMount} autounattend
       '';
       provisioners = [
         {
@@ -219,134 +215,104 @@ in rec {
       };
     };
 
-    installIso = {
-      iso = pkgs.fetchurl {
-        inherit (fixeds.fetchurl."${{
-          # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2019
-          "2019" = "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US";
-          # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2022
-          "2022" = "https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x409&culture=en-us&country=US";
-          # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2025
-          "2025" = "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us";
-        }."${version}"}") url sha256 name;
-        meta = {
-          license = lib.licenses.unfree;
-        };
+    installIso = pkgs.fetchurl {
+      inherit (fixeds.fetchurl."${{
+        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2019
+        "2019" = "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US";
+        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2022
+        "2022" = "https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x409&culture=en-us&country=US";
+        # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2025
+        "2025" = "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us";
+      }."${version}"}") url sha256 name;
+      meta = {
+        license = lib.licenses.unfree;
       };
-      checksum = "none";
+    };
 
-      inherit autounattend;
+    autounattendFloppy = pkgs.runCommand "windows-${version}-autounattend-floppy" {} ''
+      mkdir $out
+      cp ${autounattendXml} $out/Autounattend.xml
+    '';
 
-      floppy = pkgs.runCommand "windows-${version}-autounattend-floppy" {} ''
-        mkdir $out
-        cp ${autounattend} $out/Autounattend.xml
-      '';
+    autounattendMount = pkgs.runCommand "windows-${version}-autounattend-mount" {} ''
+      mkdir $out
 
-      mount = pkgs.runCommand "windows-${version}-autounattend-mount" {} ''
-        mkdir $out
-
-        ln -s ${writeRegistryFile {
-          name = "windows-${version}-specialize.reg";
-          keys = {
-            # enable long paths
-            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\FileSystem".LongPathsEnabled = true;
-            # disable uac
-            # https://docs.microsoft.com/en-us/windows/security/identity-protection/user-account-control/user-account-control-group-policy-and-registry-key-settings
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" = {
-              EnableLUA = false;
-              PromptOnSecureDesktop = false;
-              ConsentPromptBehaviorAdmin = 0;
-              EnableVirtualization = false;
-              EnableInstallerDetection = false;
-            };
-            # disable system restore
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore".DisableSR = true;
-            # disable windows update
-            # https://docs.microsoft.com/en-us/windows/deployment/update/waas-wu-settings
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU" = {
-              NoAutoUpdate = true;
-              AUOptions = 1;
-            };
-            # disable windows defender
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender".DisableAntiSpyware = true;
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection".DisableRealtimeMonitoring = true;
-            # disable hibernation and fast startup
-            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power" = {
-              HibernateEnabled = false;
-              HiberbootEnabled = false;
-            };
-            # disable screensaver
-            "HKEY_USERS\\DefaultUser\\Control Panel\\Desktop" = {
-              ScreenSaveActive = false;
-            };
-            # set explorer options
-            "HKEY_USERS\\DefaultUser\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" = {
-              # show file extensions
-              HideFileExt = false;
-              # show hidden files
-              Hidden = 1;
-            };
+      ln -s ${writeRegistryFile {
+        name = "windows-${version}-specialize.reg";
+        keys = {
+          # enable long paths
+          "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\FileSystem".LongPathsEnabled = true;
+          # disable uac
+          # https://docs.microsoft.com/en-us/windows/security/identity-protection/user-account-control/user-account-control-group-policy-and-registry-key-settings
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" = {
+            EnableLUA = false;
+            PromptOnSecureDesktop = false;
+            ConsentPromptBehaviorAdmin = 0;
+            EnableVirtualization = false;
+            EnableInstallerDetection = false;
           };
-        }} $out/specialize.reg
+          # disable system restore
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\SystemRestore".DisableSR = true;
+          # disable windows update
+          # https://docs.microsoft.com/en-us/windows/deployment/update/waas-wu-settings
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU" = {
+            NoAutoUpdate = true;
+            AUOptions = 1;
+          };
+          # disable windows defender
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender".DisableAntiSpyware = true;
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection".DisableRealtimeMonitoring = true;
+          # disable hibernation and fast startup
+          "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power" = {
+            HibernateEnabled = false;
+            HiberbootEnabled = false;
+          };
+          # disable screensaver
+          "HKEY_USERS\\DefaultUser\\Control Panel\\Desktop" = {
+            ScreenSaveActive = false;
+          };
+          # set explorer options
+          "HKEY_USERS\\DefaultUser\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" = {
+            # show file extensions
+            HideFileExt = false;
+            # show hidden files
+            Hidden = 1;
+          };
+        };
+      }} $out/specialize.reg
 
-        ln -s ${writeLines "windows-${version}-specialize.ps1" [
-          # disable filesystem access time
-          ''fsutil behavior set disablelastaccess 1''
-          # move pagefile to D:
-          ''(Get-WmiObject -Query "select * from Win32_PageFileSetting").delete()''
-          ''Set-WMIInstance -Class Win32_PageFileSetting -Arguments @{Name="D:\pagefile.sys"; MaximumSize=0}''
-          # uninstall defender
-          ''Uninstall-WindowsFeature -Name Windows-Defender -Remove''
-          # disable Windows Search
-          ''sc config WSearch start= disabled''
-          # power options
-          ''powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c''
-          ''powercfg /hibernate off''
-          ''powercfg /change -monitor-timeout-ac 0''
-          ''powercfg /change -monitor-timeout-dc 0''
-          # confirm Secure Boot
-          ''Confirm-SecureBootUEFI''
-          # apply registry tweaks
-          ''reg load "HKU\DefaultUser" "C:\Users\Default\NTUSER.DAT"''
-          ''reg import "D:\install\specialize.reg"''
-          ''reg unload "HKU\DefaultUser"''
-          # install recent Microsoft root code signing certificate required for some software
-          # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
-          ''Import-Certificate -FilePath "D:\install\microsoft.crt" -CertStoreLocation "Cert:\LocalMachine\Root"''
-        ]} $out/specialize.ps1
+      ln -s ${writeLines "windows-${version}-specialize.ps1" [
+        # disable filesystem access time
+        ''fsutil behavior set disablelastaccess 1''
+        # move pagefile to D:
+        ''(Get-WmiObject -Query "select * from Win32_PageFileSetting").delete()''
+        ''Set-WMIInstance -Class Win32_PageFileSetting -Arguments @{Name="D:\pagefile.sys"; MaximumSize=0}''
+        # uninstall defender
+        ''Uninstall-WindowsFeature -Name Windows-Defender -Remove''
+        # disable Windows Search
+        ''sc config WSearch start= disabled''
+        # power options
+        ''powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c''
+        ''powercfg /hibernate off''
+        ''powercfg /change -monitor-timeout-ac 0''
+        ''powercfg /change -monitor-timeout-dc 0''
+        # confirm Secure Boot
+        ''Confirm-SecureBootUEFI''
+        # apply registry tweaks
+        ''reg load "HKU\DefaultUser" "C:\Users\Default\NTUSER.DAT"''
+        ''reg import "D:\autounattend\specialize.reg"''
+        ''reg unload "HKU\DefaultUser"''
+        # install recent Microsoft root code signing certificate required for some software
+        # see https://developercommunity.microsoft.com/t/VS-2022-Unable-to-Install-Offline/10927089
+        ''Import-Certificate -FilePath "D:\autounattend\microsoft.crt" -CertStoreLocation "Cert:\LocalMachine\Root"''
+      ]} $out/specialize.ps1
 
-        ln -s ${pkgs.fetchurl {
-          inherit (fixeds.fetchurl."https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt") url sha256 name;
-        }} $out/microsoft.crt
-      '';
-    };
+      ln -s ${pkgs.fetchurl {
+        inherit (fixeds.fetchurl."https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt") url sha256 name;
+      }} $out/microsoft.crt
+    '';
 
-    initialDiskPlus = runPackerStep {
-      name = "windows-plus-${version}";
-      disk = initialDisk;
-      extraMount = "install";
-      extraMountOut = false;
-      beforeScript = ''
-        mkdir install
-        ln -s \
-          ${msvc.redist_x64.installer}/vc_redist.x64.exe \
-          ${msvc.redist_x86.installer}/vc_redist.x86.exe \
-          install/
-        ln -s ${dotnet} install/dotnet
-      '';
-      provisioners = [
-        {
-          type = "windows-shell";
-          inline = [''
-            D:\install\vc_redist.x64.exe /install /quiet /norestart
-            D:\install\vc_redist.x86.exe /install /quiet /norestart
-            xcopy D:\install\dotnet "C:\Program Files\dotnet" /s /i /y /q
-          ''];
-        }
-      ];
-    };
-
-    autounattend = mkAutounattend {
+    autounattendXml = mkAutounattendXml {
       virtioSubpath = {
         "2019" = "2k19";
         "2022" = "2k22";
@@ -385,7 +351,7 @@ in rec {
         "viostor"
       ];
     };
-    mkAutounattend = { virtioSubpath, virtioDriversDuringSetup, virtioDrivers }: let
+    mkAutounattendXml = { virtioSubpath, virtioDriversDuringSetup, virtioDrivers }: let
       # driver paths for Microsoft-Windows-PnpCustomizations{,Non}WinPE components
       mkPnpCustomizations = drivers: {
         DriverPaths.PathAndCredentials = lib.pipe drivers [
@@ -404,7 +370,7 @@ in rec {
         "@wcm:action" = "add";
         Order = i + 1;
       });
-    in mkAutounattendInternal {
+    in mkAutounattendXmlInternal {
       windowsPE = {
         # drivers necessary during setup
         Microsoft-Windows-PnpCustomizationsWinPE = mkPnpCustomizations virtioDriversDuringSetup;
@@ -485,7 +451,7 @@ in rec {
         Microsoft-Windows-Deployment.RunSynchronous.RunSynchronousCommand = orderedList (map (command: {
           Path = command;
         }) [
-          ''powershell -File D:\install\specialize.ps1''
+          ''powershell -File D:\autounattend\specialize.ps1''
         ]);
         Microsoft-Windows-ServerManager-SvrMgrNc.DoNotOpenServerManagerAtLogon = true;
         # disable IE hardened configuration
@@ -609,7 +575,7 @@ in rec {
       };
     };
     # make autounattend.xml from a two-level map (pass => component => ...)
-    mkAutounattendInternal = passesComponents: pkgs.runCommand "autounattend-${version}.xml" {
+    mkAutounattendXmlInternal = passesComponents: pkgs.runCommand "autounattend-${version}.xml" {
       nativeBuildInputs = [
         pkgs.yq
       ];
@@ -633,6 +599,31 @@ in rec {
         };
       })} >> $out
     '';
+
+    initialDiskPlus = runPackerStep {
+      name = "windows-plus-${version}";
+      disk = initialDisk;
+      extraMount = "install";
+      extraMountOut = false;
+      beforeScript = ''
+        mkdir install
+        ln -s \
+          ${msvc.redist_x64.installer}/vc_redist.x64.exe \
+          ${msvc.redist_x86.installer}/vc_redist.x86.exe \
+          install/
+        ln -s ${dotnet} install/dotnet
+      '';
+      provisioners = [
+        {
+          type = "windows-shell";
+          inline = [''
+            D:\install\vc_redist.x64.exe /install /quiet /norestart
+            D:\install\vc_redist.x86.exe /install /quiet /norestart
+            xcopy D:\install\dotnet "C:\Program Files\dotnet" /s /i /y /q
+          ''];
+        }
+      ];
+    };
   };
 
   # generate .reg file given a list of actions
