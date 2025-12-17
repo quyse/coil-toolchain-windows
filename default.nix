@@ -21,12 +21,27 @@ toolchain-windows = rec {
 
   wine = (pkgs.winePackagesFor "wineWow64").minimal;
 
+  # initializes wineprefix by doing lightweight copy of template wineprefix
+  # symlink all files from drive_c instead of copying them
   initWinePrefix = ''
-    echo -n 'Initializing Wine prefix... ' >&2
+    echo -n 'Initializing Wine prefix from template... ' >&2
     mkdir .wineprefix
     export WINEPREFIX="$(readlink -f .wineprefix)" WINEDEBUG=-all
-    wineboot
+    cp -rs --no-preserve=mode ${templateWinePrefix}/drive_c "$WINEPREFIX"/drive_c
+    cp -r --no-preserve=mode ${templateWinePrefix}/{*.reg,dosdevices,.update-timestamp} "$WINEPREFIX"/
+    wineboot -u
     echo ' done.' >&2
+  '';
+
+  templateWinePrefix = pkgs.runCommand "wineprefix.template" {
+    nativeBuildInputs = [
+      wine
+    ];
+  } ''
+    export WINEPREFIX=$out WINEDEBUG=-all
+    mkdir $WINEPREFIX
+    wineboot
+    wineserver -k
   '';
 
   installWineMono = let
