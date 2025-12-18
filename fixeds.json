@@ -22,8 +22,8 @@
   },
   "fetchurl": {
     "https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DE375670872D9D",
-      "last-modified": "Tue, 09 Dec 2025 19:09:12 GMT",
+      "etag": "0x8DE376190E87599",
+      "last-modified": "Tue, 09 Dec 2025 20:28:51 GMT",
       "name": "dotnet-runtime-10.0.1-win-x64.zip",
       "sha256": "06lximyq41q2fs9i5nkd8h2ia84ncpg0kicd84bxp2295z4jvcq8",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.1/dotnet-runtime-10.0.1-win-x64.zip"
