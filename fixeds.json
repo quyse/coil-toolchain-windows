@@ -22,22 +22,22 @@
   },
   "fetchurl": {
     "https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DE52E07D5471A3",
-      "last-modified": "Tue, 13 Jan 2026 20:15:26 GMT",
+      "etag": "0x8DE5422E31B0203",
+      "last-modified": "Thu, 15 Jan 2026 10:43:14 GMT",
       "name": "dotnet-runtime-10.0.2-win-x64.zip",
       "sha256": "13j89d528ihzir7ch92kmaknj9wpbrm4dw54z0clgw876haw55bi",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.2/dotnet-runtime-10.0.2-win-x64.zip"
     },
     "https://aka.ms/dotnet/8.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DE52DA31D8B560",
-      "last-modified": "Tue, 13 Jan 2026 19:30:22 GMT",
+      "etag": "0x8DE542572C550A0",
+      "last-modified": "Thu, 15 Jan 2026 11:01:34 GMT",
       "name": "dotnet-runtime-8.0.23-win-x64.zip",
       "sha256": "1rldd70ngj6js6qml0fmkj25lh4pfw1zb8jm1nxzvq7jmfbx8258",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/8.0.23/dotnet-runtime-8.0.23-win-x64.zip"
     },
     "https://aka.ms/dotnet/9.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DE52D958DC8213",
-      "last-modified": "Tue, 13 Jan 2026 19:24:18 GMT",
+      "etag": "0x8DE58448DBDAA16",
+      "last-modified": "Tue, 20 Jan 2026 16:54:19 GMT",
       "name": "dotnet-runtime-9.0.12-win-x64.zip",
       "sha256": "0vbwzk8hz41jyjcf3anmayvmb0d1p0djvscji23dgky3g45icl6y",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/9.0.12/dotnet-runtime-9.0.12-win-x64.zip"
