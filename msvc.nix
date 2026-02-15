@@ -126,7 +126,7 @@ rec {
     buildEnv = buildEnvForCMake;
   };
 
-  buildEnvFun = { nameSuffix, llvmBin, cmakeBin }: stdenv.mkDerivation {
+  buildEnvFun = { nameSuffix, llvm, cmake }: stdenv.mkDerivation {
     name = "windowsBuildEnv-${nameSuffix}";
     inherit nameSuffix;
 
@@ -143,11 +143,11 @@ rec {
         export WINEPATH="${toolchain-windows.makeWinePaths ([
           "$MSVC_PREFIX/bin/Hostx64/x64"
         ]
-        ++ lib.optional (llvmBin != null) (pkgs.runCommand "llvmBin" {} ''
+        ++ lib.optional (llvm != null) (pkgs.runCommand "llvmBin" {} ''
             mkdir $out
-            ln -s ${llvmBin}/clang-cl.exe $out/clang-cl.exe
+            ln -s ${llvm}/bin/clang-cl.exe $out/clang-cl.exe
           '')
-        ++ lib.optional (cmakeBin != null) cmakeBin
+        ++ lib.optional (cmake != null) "${cmake}/bin"
         ++ [
           "${components}/msvc/VC/Tools/Llvm/bin"
           "${components}/msvc/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin"
@@ -173,8 +173,11 @@ rec {
 
         export CC=clang-cl
         export CXX=clang-cl
-        export CFLAGS=-m64
-        export CXXFLAGS=-m64
+        ${lib.optionalString (llvm != null) ''
+          CLANG_RESOURCE_DIR="$(winepath -w ${llvm}/lib/clang/*)"
+        ''}
+        export CFLAGS="-m64${lib.optionalString (llvm != null) " -resource-dir=$CLANG_RESOURCE_DIR"}"
+        export CXXFLAGS="-m64${lib.optionalString (llvm != null) " -resource-dir=$CLANG_RESOURCE_DIR"}"
 
         # workaround for https://bugs.winehq.org/show_bug.cgi?id=21259
         wine start mspdbsrv.exe -start -spawn -shutdowntime -1
@@ -224,20 +227,19 @@ rec {
 
   buildEnvForCMake = buildEnvFun {
     nameSuffix = "msvc_cmakebin";
-    llvmBin = null;
-    cmakeBin = "${cmakeBinary}/bin";
+    llvm = null;
+    cmake = cmakeBinary;
   };
 
   buildEnv = buildEnvFun {
     nameSuffix = "msvc";
-    llvmBin = null;
-    cmakeBin = "${cmake}/bin";
+    llvm = null;
+    inherit cmake;
   };
 
   buildEnvWithModulesSupport = buildEnvFun {
     nameSuffix = "msvc_cppm";
-    llvmBin = "${llvm}/bin";
-    cmakeBin = "${cmake}/bin";
+    inherit llvm cmake;
   };
 
   defaultBuildConfig = buildConfig;
