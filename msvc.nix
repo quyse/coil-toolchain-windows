@@ -72,30 +72,6 @@ rec {
   };
   clangVersion = builtins.readFile "${get-clang-version}/bin/version.txt";
 
-  llvmPackages = pkgs."llvmPackages_${clangVersion}";
-  llvm = mkCmakePkg {
-    inherit (llvmPackages.libllvm) pname version meta;
-    reduceDeps = false;
-    src = llvmPackages.libllvm.passthru.monorepoSrc;
-    sourceDir = "llvm";
-    preConfigure = ''
-      export WINEPATH="$WINEPATH;${toolchain-windows.makeWinePaths [python]}"
-    '';
-    patches = [
-      # needed for clang-cl modules support
-      (pkgs.fetchpatch {
-        url = "https://github.com/llvm/llvm-project/pull/121046.patch";
-        hash = "sha256-WLkFUYgouLPn5wSV0L7ZUWWZ5ATm1KCezTDe2uqXGiw=";
-      })
-    ];
-    cmakeFlags = [
-      "-DLLVM_USE_LINKER=lld-link"
-      "-DLLVM_ENABLE_PROJECTS=clang"
-      "-DLLVM_INCLUDE_TESTS=OFF"
-    ];
-    doCheck = false;
-  };
-
   # seed cmake from official binaries
   # cmake from msvs is broken in Wine since msvs 18.0.0
   cmakeBinary = pkgs.runCommand "cmake-windows-binary" {
@@ -110,18 +86,15 @@ rec {
   '';
 
   cmake = let
-    fixed = fixeds.fetchgit."https://github.com/Kitware/CMake.git##latest_release";
+    fixed = fixeds.fetchgit."https://github.com/Kitware/CMake.git";
   in mkCmakePkg rec {
     pname = "cmake";
-    version = lib.elemAt (lib.match "v(.+)" fixed.tag) 0;
+    version = "master";
     inherit (pkgs.cmake) meta;
     reduceDeps = false;
     src = pkgs.fetchgit {
       inherit (fixed) url rev sha256;
     };
-    patches = [
-      ./msvc-cmake-cpp-modules.patch
-    ];
     doCheck = false;
     buildEnv = buildEnvForCMake;
   };
@@ -237,10 +210,7 @@ rec {
     inherit cmake;
   };
 
-  buildEnvWithModulesSupport = buildEnvFun {
-    nameSuffix = "msvc_cppm";
-    inherit llvm cmake;
-  };
+  buildEnvWithModulesSupport = buildEnv;
 
   defaultBuildConfig = buildConfig;
 
