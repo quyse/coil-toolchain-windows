@@ -41,12 +41,12 @@
       "sha256": "0s5i1rps314y3kyvljqv21v228ajszqq5ir2qh2hh5xazj5gq8n4",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/9.0.15/dotnet-runtime-9.0.15-win-x64.zip"
     },
-    "https://dl.winehq.org/wine/wine-mono/11.0.0/wine-mono-11.0.0-x86.msi": {
-      "etag": "\"8cccb19db627c28f271148233b1b72d5-11\"",
-      "last-modified": "Thu, 12 Feb 2026 19:57:29 GMT",
-      "name": "wine-mono-11.0.0-x86.msi",
-      "sha256": "09ydd52qcyxlpl0a848byxvfkv4zkpawxmlc9w9m5kxxp7hfvvyp",
-      "url": "https://dl.winehq.org/wine/wine-mono/11.0.0/wine-mono-11.0.0-x86.msi"
+    "https://dl.winehq.org/wine/wine-mono/11.1.0/wine-mono-11.1.0-x86.msi": {
+      "etag": "\"2226013490c33f20b497de8850ade672-10\"",
+      "last-modified": "Wed, 22 Apr 2026 19:56:36 GMT",
+      "name": "wine-mono-11.1.0-x86.msi",
+      "sha256": "1fd9w1cwx96wzfwnl8z9z2blnhf5vjfwfszzkwh0n9pq64a39c6y",
+      "url": "https://dl.winehq.org/wine/wine-mono/11.1.0/wine-mono-11.1.0-x86.msi"
     },
     "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso": {
       "etag": "\"2f110800-63e906acdd1cb\"",
