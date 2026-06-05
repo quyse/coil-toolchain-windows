@@ -13,6 +13,7 @@ stdenv.mkDerivation rec {
   name = "makemsix";
   src = fetchgit {
     inherit (fixeds.fetchgit."https://github.com/microsoft/msix-packaging.git") url rev sha256;
+    fetchSubmodules = false;
   };
   nativeBuildInputs = [
     cmake
