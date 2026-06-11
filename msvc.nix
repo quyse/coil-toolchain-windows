@@ -122,6 +122,7 @@ rec {
           '')
         ++ lib.optional (cmake != null) "${cmake}/bin"
         ++ [
+          "${components}/msvc/VC/Tools/Llvm/x64/bin" # since msvs 18.7.0
           "${components}/msvc/VC/Tools/Llvm/bin"
           "${components}/msvc/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin"
           "${components}/msvc/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja"
