@@ -1,8 +1,8 @@
 {
   "fetchgit": {
     "https://github.com/Kitware/CMake.git": {
-      "rev": "54be210efca69cc49cc9cc0fec68c10f4b02d260",
-      "sha256": "0y39zd90i62kd026w20cxj1zaxj780nia236wqh4nqnbw2nd8yax",
+      "rev": "c5fcc275c8b48372addac9467e27ec0f72c5e08b",
+      "sha256": "1zp6mqv8b8ycwa476dq9cia0gmhknzm5zz5zhn9km91mcwlsi5px",
       "url": "https://github.com/Kitware/CMake.git"
     },
     "https://github.com/microsoft/msix-packaging.git": {
