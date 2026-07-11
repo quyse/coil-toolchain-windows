@@ -86,7 +86,7 @@ rec {
   '';
 
   cmake = let
-    fixed = fixeds.fetchgit."https://github.com/Kitware/CMake.git";
+    fixed = fixeds.fetchgit."https://github.com/Kitware/CMake.git#release";
   in mkCmakePkg rec {
     pname = "cmake";
     version = "master";
