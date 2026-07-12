@@ -103,7 +103,7 @@ toolchain-windows = rec {
   };
 
   touch = {
-    inherit (windows) initialDiskPlus;
+    inherit (windows) initialDisk initialDiskPlus;
     inherit makemsix;
     inherit (msvc) get-clang-version;
     inherit dotnet;

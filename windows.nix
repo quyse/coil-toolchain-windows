@@ -193,7 +193,7 @@ in rec {
   '';
 
   mkWindows = { version ? "2025" }: rec {
-    initialDisk =  runPackerStep {
+    initialDisk = runPackerStep {
       name = "windows-${version}";
       extraMount = "autounattend";
       extraMountOut = false;
