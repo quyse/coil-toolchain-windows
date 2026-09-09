@@ -21,25 +21,25 @@
   },
   "fetchurl": {
     "https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DEF7CA1C4E5431",
-      "last-modified": "Tue, 11 Aug 2026 17:00:56 GMT",
-      "name": "dotnet-runtime-10.0.11-win-x64.zip",
-      "sha256": "1dl49vcy34d2hmlb64bhxm9nyq9hlnq6xbgy1mrha40r7fhmgnh4",
-      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.11/dotnet-runtime-10.0.11-win-x64.zip"
+      "etag": "0x8DF0DE541FDEDA2",
+      "last-modified": "Tue, 08 Sep 2026 20:10:41 GMT",
+      "name": "dotnet-runtime-10.0.12-win-x64.zip",
+      "sha256": "1p06x1qkgvp60h4dmqsn100dgqhclid5iiw7x7j2hlmvmkk4fffs",
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.12/dotnet-runtime-10.0.12-win-x64.zip"
     },
     "https://aka.ms/dotnet/8.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DEF7C9AD22458A",
-      "last-modified": "Tue, 11 Aug 2026 16:57:49 GMT",
-      "name": "dotnet-runtime-8.0.30-win-x64.zip",
-      "sha256": "1780k58j8kb5m6vqqjv208iaqqsz2cr75rc15xylm8328k5d64mp",
-      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/8.0.30/dotnet-runtime-8.0.30-win-x64.zip"
+      "etag": "0x8DF0DDE7026A148",
+      "last-modified": "Tue, 08 Sep 2026 19:21:52 GMT",
+      "name": "dotnet-runtime-8.0.31-win-x64.zip",
+      "sha256": "1anwn2d0q7gqysqma4x9xs02c046gd2gwlf58frpiqw3vkpvpskx",
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/8.0.31/dotnet-runtime-8.0.31-win-x64.zip"
     },
     "https://aka.ms/dotnet/9.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DEF7C9E34C6DF9",
-      "last-modified": "Tue, 11 Aug 2026 16:59:20 GMT",
-      "name": "dotnet-runtime-9.0.19-win-x64.zip",
-      "sha256": "1i5cxp146cmgh6mknpg2afqpmg2bj5wjxkcp1ywzkqq8qgx59xkv",
-      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/9.0.19/dotnet-runtime-9.0.19-win-x64.zip"
+      "etag": "0x8DF0DDE76ACF280",
+      "last-modified": "Tue, 08 Sep 2026 19:22:03 GMT",
+      "name": "dotnet-runtime-9.0.20-win-x64.zip",
+      "sha256": "00rmj14hs4n8439hrvy5bk1wyxjgk7pzf1klsmyi1da6y02msr0z",
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/9.0.20/dotnet-runtime-9.0.20-win-x64.zip"
     },
     "https://dl.winehq.org/wine/wine-mono/11.3.0/wine-mono-11.3.0-x86.msi": {
       "etag": "\"8a1c2e3d47841983432e0cdf5370e1c2-10\"",
