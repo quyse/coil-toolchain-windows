@@ -1,8 +1,8 @@
 {
   "fetchgit": {
     "https://github.com/Kitware/CMake.git#release": {
-      "rev": "03779318b85d56f48d3f2aa86221eac7ae70c919",
-      "sha256": "16ni6rx7p8jlwv12fj5iy129z86lj02mkcqlrk7r3jxgrq0c47j9",
+      "rev": "72ae01edce3f5642da6a8c585077a602ebcbfea9",
+      "sha256": "1cmnnki4dgn259ad6w456dl0771nd4jgd0nqwf73974nzvrbzcvz",
       "url": "https://github.com/Kitware/CMake.git"
     },
     "https://github.com/microsoft/msix-packaging.git": {
@@ -21,22 +21,22 @@
   },
   "fetchurl": {
     "https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DF0DE541FDEDA2",
-      "last-modified": "Tue, 08 Sep 2026 20:10:41 GMT",
+      "etag": "0x8DF0E873D9E920A",
+      "last-modified": "Wed, 09 Sep 2026 15:30:12 GMT",
       "name": "dotnet-runtime-10.0.12-win-x64.zip",
       "sha256": "1p06x1qkgvp60h4dmqsn100dgqhclid5iiw7x7j2hlmvmkk4fffs",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.12/dotnet-runtime-10.0.12-win-x64.zip"
     },
     "https://aka.ms/dotnet/8.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DF0DDE7026A148",
-      "last-modified": "Tue, 08 Sep 2026 19:21:52 GMT",
+      "etag": "0x8DF0DEEEEA1387D",
+      "last-modified": "Tue, 08 Sep 2026 21:19:56 GMT",
       "name": "dotnet-runtime-8.0.31-win-x64.zip",
       "sha256": "1anwn2d0q7gqysqma4x9xs02c046gd2gwlf58frpiqw3vkpvpskx",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/8.0.31/dotnet-runtime-8.0.31-win-x64.zip"
     },
     "https://aka.ms/dotnet/9.0/dotnet-runtime-win-x64.zip": {
-      "etag": "0x8DF0DDE76ACF280",
-      "last-modified": "Tue, 08 Sep 2026 19:22:03 GMT",
+      "etag": "0x8DF0DEF3D14BF8A",
+      "last-modified": "Tue, 08 Sep 2026 21:22:08 GMT",
       "name": "dotnet-runtime-9.0.20-win-x64.zip",
       "sha256": "00rmj14hs4n8439hrvy5bk1wyxjgk7pzf1klsmyi1da6y02msr0z",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/9.0.20/dotnet-runtime-9.0.20-win-x64.zip"
