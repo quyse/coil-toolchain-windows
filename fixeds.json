@@ -21,22 +21,22 @@
   },
   "fetchurl": {
     "https://aka.ms/dotnet/10.0/dotnet-runtime-win-x64.zip": {
-      "etag": "\"0x8DF3F2C506C1E9A\"",
-      "last-modified": "Tue, 10 Nov 2026 13:12:47 GMT",
+      "etag": "\"0x8DF3F4D1E2D6021\"",
+      "last-modified": "Tue, 10 Nov 2026 17:07:36 GMT",
       "name": "dotnet-runtime-10.0.15-win-x64.zip",
       "sha256": "11wy02lxi8b48zsyfxdsmdnffj4az1bawl0r9f7lfw655snikwn9",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.15/dotnet-runtime-10.0.15-win-x64.zip"
     },
     "https://aka.ms/dotnet/8.0/dotnet-runtime-win-x64.zip": {
-      "etag": "\"0x8DF3F2C8F30CC6A\"",
-      "last-modified": "Tue, 10 Nov 2026 13:14:32 GMT",
+      "etag": "\"0x8DF3F4DA0E82955\"",
+      "last-modified": "Tue, 10 Nov 2026 17:11:15 GMT",
       "name": "dotnet-runtime-8.0.34-win-x64.zip",
       "sha256": "11hp0vra5n7qjxawkmj0623dyhq44rc56nbb1gcibcvw30m5wq3w",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/8.0.34/dotnet-runtime-8.0.34-win-x64.zip"
     },
     "https://aka.ms/dotnet/9.0/dotnet-runtime-win-x64.zip": {
-      "etag": "\"0x8DF3F2CBE678957\"",
-      "last-modified": "Tue, 10 Nov 2026 13:15:51 GMT",
+      "etag": "\"0x8DF3F4D9CCB6018\"",
+      "last-modified": "Tue, 10 Nov 2026 17:11:08 GMT",
       "name": "dotnet-runtime-9.0.23-win-x64.zip",
       "sha256": "189zsa71cziphhw97ghf0zf9ybvbxsgrkn6vhfgc3hqg6a7hnvh7",
       "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/9.0.23/dotnet-runtime-9.0.23-win-x64.zip"
