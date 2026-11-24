@@ -119,7 +119,7 @@ in rec {
           # username and password are fixed in autounattend.xml
           winrm_username = "vagrant";
           winrm_password = "vagrant";
-          winrm_timeout = "30m";
+          winrm_timeout = "120m";
           shutdown_command = ''shutdown /s /t 10 /f /d p:4:1 /c "Packer Shutdown"'';
           shutdown_timeout = "15m";
           qemuargs = [
