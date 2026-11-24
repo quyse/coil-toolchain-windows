@@ -148,7 +148,7 @@ in rec {
           ] ++
           # cdroms
           lib.concatLists (lib.imap0 (index: iso: [
-            [ "-drive" "file=${iso},if=none,format=raw,media=cdrom,id=drive-cd${toString index}" ]
+            [ "-drive" "file=${iso},if=none,format=${if lib.hasSuffix ".qcow2" iso then "qcow2" else "raw"},media=cdrom,id=drive-cd${toString index}" ]
             [ "-device" "ide-cd,bus=ahci1.${toString index},drive=drive-cd${toString index},id=cd${toString index},bootindex=${toString (index + 2)}" ]
           ]) cdromIsos) ++
           # floppy
@@ -172,7 +172,6 @@ in rec {
         } else if cdromIsos != [] then {
           iso_url = lib.head cdromIsos;
           iso_checksum = "none";
-          boot_command = ["<enter><wait><enter><wait><enter>"]; # "press any key to boot from cd"
         } else {})
       )];
       inherit provisioners;
@@ -198,7 +197,7 @@ in rec {
       extraMount = "autounattend";
       extraMountOut = false;
       cdromIsos = [
-        installIso
+        installIsoNoPrompt
         virtio_win_iso
       ];
       floppyDirectory = autounattendFloppy;
@@ -228,6 +227,17 @@ in rec {
         license = lib.licenses.unfree;
       };
     };
+
+    # Windows installation disk patched to use efisys_noprompt.bin
+    # to boot without pressing keys
+    installIsoNoPrompt = pkgs.runCommand "windows-${version}-noprompt.qcow2" {
+      nativeBuildInputs = [
+        pkgs.python3
+        qemu
+      ];
+    } ''
+      python ${./patch-win-iso.py} ${installIso} $out
+    '';
 
     autounattendFloppy = pkgs.runCommand "windows-${version}-autounattend-floppy" {} ''
       mkdir $out
