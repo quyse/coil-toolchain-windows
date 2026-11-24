@@ -222,7 +222,7 @@ in rec {
         # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2022
         "2022" = "https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x409&culture=en-us&country=US";
         # https://www.microsoft.com/en-us/evalcenter/download-windows-server-2025
-        "2025" = "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us";
+        "2025" = "https://go.microsoft.com/fwlink/?linkid=2345730&clcid=0x409&culture=en-us&country=us";
       }."${version}"}") url sha256 name;
       meta = {
         license = lib.licenses.unfree;

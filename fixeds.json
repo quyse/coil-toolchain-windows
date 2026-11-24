@@ -55,12 +55,12 @@
       "sha256": "17clcww216hgv0iaadswpi6qm5aqvxqwbzblwim5sjdd1pj7lgrh",
       "url": "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.302-1/virtio-win-0.1.302.iso"
     },
-    "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us": {
-      "etag": "\"0x3F259E31901CA79C84D1A2FB6ADCE4D14A065FF1BC1B8838C60A7D1A9DBAC90E\"",
-      "last-modified": "Thu, 19 Sep 2024 17:43:12 GMT",
-      "name": "26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso",
-      "sha256": "0gdjg62sq807jn79j15z278dx99q1l1b7c8m7k2wdqshwc14bvyh",
-      "url": "https://software-static.download.prss.microsoft.com/dbazure/888969d5-f34g-4e03-ac9d-1f9786c66749/26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
+    "https://go.microsoft.com/fwlink/?linkid=2345730&clcid=0x409&culture=en-us&country=us": {
+      "etag": "\"0x60A8C190FBB54AF58E40BA049FF290D098101E0EAD343CE912A1DC685219BE85\"",
+      "last-modified": "Tue, 20 Jan 2026 13:56:22 GMT",
+      "name": "26100.32230.260111-0550.lt_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso",
+      "sha256": "0lgxbc9fl05rm7pq7a3mrcc4sdfd5irvm1ry9s9ck53qp9rja1bv",
+      "url": "https://software-static.download.prss.microsoft.com/dbazure/998969d5-f34g-4e03-ac9d-1f9786c66749/26100.32230.260111-0550.lt_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
     },
     "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&culture=en-us&country=US": {
       "etag": "\"0xAC6B7EFD6E7E1947FA51E1D23676E38B1C3CBCE3D9F5F0EFDCAF044F92A359DA\"",
